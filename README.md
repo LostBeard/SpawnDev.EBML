@@ -6,12 +6,12 @@
 
 The demo project, EBMLViewer, included in the project is a .Net 8 Forms app for testing the library and viewing EBML documents.
 
-
 ## EBMLDocumentReader
 
 EBMLDocumentReader is the base EBML document parser. The EBMLDocumentReader can be given a list of EBMLSchemas that tell it how to process EBML documents with a matching EBML.DocType value.
 
 ## WebMDocumentReader
+
 To fix the duration in a WebM file, WebM parser reads the Timecode information from Clusters and SimpleBlocks and adds a Segment > Info > Duration element with the new duration.
 
 Example of how to add Duration info if not found in a the WebM stream.
