@@ -1,7 +1,4 @@
-﻿using System.Linq.Expressions;
-using System.Reflection.Metadata.Ecma335;
-
-namespace SpawnDev.EBML
+﻿namespace SpawnDev.EBML
 {
     /// <summary>
     /// Base element class
@@ -78,7 +75,7 @@ namespace SpawnDev.EBML
         public BaseElement(Enum id)
         {
             Id = id;
-            IdChain = Id.Equals(ElementId.EBMLSource) ? [] : [Id];
+            IdChain = Id.Equals(ElementId.EBMLSource) ? Array.Empty<Enum>() : new Enum[] { Id };
         }
         /// <summary>
         /// Remove this element from its parent
@@ -98,7 +95,7 @@ namespace SpawnDev.EBML
             }
             else
             {
-                IdChain = Id.Equals(ElementId.EBMLSource) ? [] : [Id];
+                IdChain = Id.Equals(ElementId.EBMLSource) ? Array.Empty<Enum>() : new Enum[] { Id };
             }
         }
         /// <summary>

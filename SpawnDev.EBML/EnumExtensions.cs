@@ -1,11 +1,4 @@
-﻿using SpawnDev.EBML.Matroska;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace SpawnDev.EBML
+﻿namespace SpawnDev.EBML
 {
     public static class EnumExtensions
     {

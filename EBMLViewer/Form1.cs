@@ -26,6 +26,8 @@ namespace EBMLViewer
             Text = DefaultTitle;
         }
 
+        bool eventAttached = false;
+
         void CloseSource()
         {
             if (string.IsNullOrEmpty(SourceFile))
@@ -37,11 +39,19 @@ namespace EBMLViewer
             SourceFile = "";
             Text = DefaultTitle;
             closeToolStripMenuItem.Enabled = false;
-            if (Parser is IDisposable disposable)
+            if (Parser != null && eventAttached)
             {
-                disposable.Dispose();
+                eventAttached = false;
+                Parser.OnDataChanged -= Parser_OnDataChanged;
+                if (Parser is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
             }
             treeView1.Nodes.Clear();
+            addDurationToolStripMenuItem.Enabled = false;
+            webMOptionsToolStripMenuItem.Visible = false;
+            saveToolStripMenuItem.Enabled = false;
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -57,7 +67,52 @@ namespace EBMLViewer
                 PopulateNode(parentNode);
             }
         }
-        
+
+        void SaveChanges()
+        {
+            if (Parser == null || string.IsNullOrEmpty(SourceFile)) return;
+            var sourceFile = SourceFile;
+            try
+            {
+                var sourceFilenameBase = Path.GetFileNameWithoutExtension(SourceFile);
+                var ext = Path.GetExtension(SourceFile);
+                var dir = Path.GetDirectoryName(SourceFile);
+                var destFile = Path.Combine(dir, $"{sourceFilenameBase}.fixed_temp{ext}");
+                using (var fixedStream = new FileStream(destFile, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    fixedStream.SetLength(Parser.Length);
+                    Parser.CopyTo(fixedStream);
+                }
+                // close source and overwrite original
+                CloseSource();
+                File.Delete(sourceFile);
+                File.Move(destFile, sourceFile);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Failed to save file");
+                return;
+            }
+            // reload source
+            LoadFile(sourceFile);
+        }
+
+        void AddDurationElement()
+        {
+            if (Parser != null && Parser.FixDuration())
+            {
+                var resp = MessageBox.Show("Duration element was added. Would you like to save your changes?", "Success", MessageBoxButtons.YesNo);
+                if (resp == DialogResult.Yes)
+                {
+                    SaveChanges();
+                }
+            }
+            else
+            {
+                MessageBox.Show("Failed to add duration element.", "Failed");
+            }
+        }
+
         void LoadFile(string sourceFile)
         {
             CloseSource();
@@ -70,22 +125,10 @@ namespace EBMLViewer
             {
                 fileStream = new FileStream(sourceFile, FileMode.Open, FileAccess.Read, FileShare.Read);
                 Parser = new WebMDocumentReader(fileStream);
-                var origLength = Parser.Length;
-                if (!SourceFile.Contains("fixed", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (Parser.FixDuration())
-                    {
-                        var sourceFilenameBase = Path.GetFileNameWithoutExtension(SourceFile);
-                        var ext = Path.GetExtension(SourceFile);
-                        var dir = Path.GetDirectoryName(SourceFile);
-                        var destFile = Path.Combine(dir, $"{sourceFilenameBase}.fixed_abc{ext}");
-                        var newLength = Parser.Length;
-                        var diff = origLength - newLength;
-                        using var fixedStream = new FileStream(destFile, FileMode.Create, FileAccess.Write, FileShare.None);
-                        fixedStream.SetLength(Parser.Length);
-                        Parser.CopyTo(fixedStream);
-                    }
-                }
+                Parser.OnDataChanged += Parser_OnDataChanged;
+                eventAttached = true;
+                addDurationToolStripMenuItem.Enabled = Parser != null && Parser.DocType == "webm" && Parser.Duration == null;
+                webMOptionsToolStripMenuItem.Visible = Parser != null && Parser.DocType == "webm";
             }
             catch (Exception ex)
             {
@@ -100,6 +143,13 @@ namespace EBMLViewer
             treeView1.Nodes.Add(sourceNode);
             PopulateNode(sourceNode, true);
         }
+
+        private void Parser_OnDataChanged(BaseElement obj)
+        {
+            saveToolStripMenuItem.Enabled = true;
+            addDurationToolStripMenuItem.Enabled = Parser != null && Parser.Duration == null;
+        }
+
         void PopulateNode(TreeNode parentNode, bool expandAll = false)
         {
             var isLoadingReady = parentNode.Nodes.Count == 1 && (parentNode.Nodes[0].Text == loadingReadyText);
@@ -195,6 +245,21 @@ namespace EBMLViewer
         private void splitContainer1_SplitterMoved(object sender, SplitterEventArgs e)
         {
 
+        }
+
+        private void saveToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            SaveChanges();
+        }
+
+        private void treeView1_AfterSelect(object sender, TreeViewEventArgs e)
+        {
+
+        }
+
+        private void addDurationToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            AddDurationElement();
         }
     }
 }

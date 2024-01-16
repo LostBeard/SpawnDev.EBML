@@ -31,9 +31,12 @@
             menuStrip1 = new MenuStrip();
             fileToolStripMenuItem = new ToolStripMenuItem();
             openToolStripMenuItem = new ToolStripMenuItem();
+            saveToolStripMenuItem = new ToolStripMenuItem();
             closeToolStripMenuItem = new ToolStripMenuItem();
             toolStripMenuItem1 = new ToolStripSeparator();
             exitToolStripMenuItem = new ToolStripMenuItem();
+            webMOptionsToolStripMenuItem = new ToolStripMenuItem();
+            addDurationToolStripMenuItem = new ToolStripMenuItem();
             statusStrip1 = new StatusStrip();
             splitContainer1 = new SplitContainer();
             treeView1 = new TreeView();
@@ -45,7 +48,7 @@
             // 
             // menuStrip1
             // 
-            menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem });
+            menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, webMOptionsToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
             menuStrip1.Size = new Size(1000, 24);
@@ -54,7 +57,7 @@
             // 
             // fileToolStripMenuItem
             // 
-            fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { openToolStripMenuItem, closeToolStripMenuItem, toolStripMenuItem1, exitToolStripMenuItem });
+            fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { openToolStripMenuItem, saveToolStripMenuItem, closeToolStripMenuItem, toolStripMenuItem1, exitToolStripMenuItem });
             fileToolStripMenuItem.Name = "fileToolStripMenuItem";
             fileToolStripMenuItem.Size = new Size(37, 20);
             fileToolStripMenuItem.Text = "File";
@@ -65,6 +68,14 @@
             openToolStripMenuItem.Size = new Size(103, 22);
             openToolStripMenuItem.Text = "Open";
             openToolStripMenuItem.Click += openToolStripMenuItem_Click;
+            // 
+            // saveToolStripMenuItem
+            // 
+            saveToolStripMenuItem.Enabled = false;
+            saveToolStripMenuItem.Name = "saveToolStripMenuItem";
+            saveToolStripMenuItem.Size = new Size(103, 22);
+            saveToolStripMenuItem.Text = "Save";
+            saveToolStripMenuItem.Click += saveToolStripMenuItem_Click;
             // 
             // closeToolStripMenuItem
             // 
@@ -85,6 +96,21 @@
             exitToolStripMenuItem.Size = new Size(103, 22);
             exitToolStripMenuItem.Text = "Exit";
             exitToolStripMenuItem.Click += exitToolStripMenuItem_Click;
+            // 
+            // webMOptionsToolStripMenuItem
+            // 
+            webMOptionsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { addDurationToolStripMenuItem });
+            webMOptionsToolStripMenuItem.Name = "webMOptionsToolStripMenuItem";
+            webMOptionsToolStripMenuItem.Size = new Size(99, 20);
+            webMOptionsToolStripMenuItem.Text = "WebM Options";
+            webMOptionsToolStripMenuItem.Visible = false;
+            // 
+            // addDurationToolStripMenuItem
+            // 
+            addDurationToolStripMenuItem.Name = "addDurationToolStripMenuItem";
+            addDurationToolStripMenuItem.Size = new Size(180, 22);
+            addDurationToolStripMenuItem.Text = "Add Duration";
+            addDurationToolStripMenuItem.Click += addDurationToolStripMenuItem_Click;
             // 
             // statusStrip1
             // 
@@ -116,6 +142,7 @@
             treeView1.Name = "treeView1";
             treeView1.Size = new Size(814, 584);
             treeView1.TabIndex = 0;
+            treeView1.AfterSelect += treeView1_AfterSelect;
             // 
             // Form1
             // 
@@ -150,5 +177,8 @@
         private ToolStripMenuItem closeToolStripMenuItem;
         private ToolStripSeparator toolStripMenuItem1;
         private ToolStripMenuItem exitToolStripMenuItem;
+        private ToolStripMenuItem saveToolStripMenuItem;
+        private ToolStripMenuItem webMOptionsToolStripMenuItem;
+        private ToolStripMenuItem addDurationToolStripMenuItem;
     }
 }

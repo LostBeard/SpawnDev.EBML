@@ -1,11 +1,4 @@
-﻿using System;
-using System.IO;
-using System.IO.Pipes;
-using System.Reflection;
-using System.Runtime.InteropServices;
-using System.Text;
-using static System.Formats.Asn1.AsnWriter;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+﻿using System.Text;
 
 namespace SpawnDev.EBML
 {
@@ -263,13 +256,13 @@ namespace SpawnDev.EBML
             if (encoding == null) encoding = Encoding.UTF8;
             return encoding.GetString(stream.ReadBytes(size, true)).TrimEnd('\0');
         }
-        private static readonly double TimeScale = 1000;
+        private static readonly double TimeScale = 1000000;
         public static readonly DateTime DateTimeReferencePoint = new DateTime(2001, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         public static DateTime ReadEBMLDate(this Stream stream, int size)
         {
             if (size == 0) return DateTimeReferencePoint;
             var timeOffset = stream.ReadEBMLInt(size);
-            return DateTimeReferencePoint + TimeSpan.FromMicroseconds(timeOffset / TimeScale);
+            return DateTimeReferencePoint + TimeSpan.FromMilliseconds(timeOffset / TimeScale);
         }
         #endregion
     }

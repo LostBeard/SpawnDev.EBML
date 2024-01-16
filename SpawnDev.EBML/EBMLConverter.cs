@@ -1,8 +1,4 @@
-﻿
-
-using System.IO;
-using System;
-using System.Text;
+﻿using System.Text;
 
 namespace SpawnDev.EBML
 {
@@ -54,11 +50,11 @@ namespace SpawnDev.EBML
         {
             return BigEndian.GetBytes(value);
         }
-        private static readonly double TimeScale = 1000;
+        private static readonly double TimeScale = 1000000;
         public static readonly DateTime DateTimeReferencePoint = new DateTime(2001, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         public static byte[] ToDateBytes(DateTime value, int minOctets = 0)
         {
-            var timeOffset = (long)((value - DateTimeReferencePoint).TotalMicroseconds * TimeScale);
+            var timeOffset = (long)((value - DateTimeReferencePoint).TotalMilliseconds * TimeScale);
             return ToIntBytes(timeOffset, minOctets);
         }
         public static int GetFirstSetBitIndex(byte value, out byte leftover)
@@ -147,7 +143,7 @@ namespace SpawnDev.EBML
         {
             if (size == 0) return DateTimeReferencePoint;
             var timeOffset = ReadEBMLInt(data, size, index);
-            return DateTimeReferencePoint + TimeSpan.FromMicroseconds(timeOffset / TimeScale);
+            return DateTimeReferencePoint + TimeSpan.FromMilliseconds(timeOffset / TimeScale);
         }
         public const ulong UnknownSizeVINT8 = 72057594037927935ul;
         public static ulong GetUnknownSizeValue(int size) => (ulong)Math.Pow(2, (size * 8) - size) - 1ul;

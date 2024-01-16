@@ -2,7 +2,7 @@
 {
     public class DateElement : BaseElement<DateTime>
     {
-        static readonly double scale = 1000;
+        readonly double TimeScale = 1000000;
         public static readonly DateTime DateTimeReferencePoint = new DateTime(2001, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         public static explicit operator DateTime(DateElement? element) => element == null ? DateTimeReferencePoint : element.Data;
         public static explicit operator DateTime?(DateElement? element) => element == null ? null : element.Data;
@@ -27,7 +27,7 @@
             _DataStream = new Lazy<SegmentSource?>(() =>
             {
                 // switch endianness and remove preceding 0 bytes
-                var timeOffset = (long)((Data - DateTimeReferencePoint).TotalMicroseconds * scale);
+                var timeOffset = (long)((Data - DateTimeReferencePoint).TotalMilliseconds * TimeScale);
                 var bytes = BitConverter.GetBytes(timeOffset).Reverse().ToList();
                 while (bytes.Count > 1 && bytes[0] == 0) bytes.RemoveAt(0);
                 return new ByteSegment(bytes.ToArray());

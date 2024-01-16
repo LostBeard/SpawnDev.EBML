@@ -1,6 +1,4 @@
-﻿using System.Text;
-
-namespace SpawnDev.EBML
+﻿namespace SpawnDev.EBML
 {
     public class IntElement : BaseElement<long>
     {

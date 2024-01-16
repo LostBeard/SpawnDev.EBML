@@ -1,6 +1,4 @@
-﻿using System.Data;
-
-namespace SpawnDev.EBML
+﻿namespace SpawnDev.EBML
 {
     /// <summary>
     /// A .Net EBML library for reading and writing EBML streams<br />

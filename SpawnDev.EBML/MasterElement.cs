@@ -1,10 +1,5 @@
 ﻿using System.Collections.ObjectModel;
 using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Xml.Linq;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace SpawnDev.EBML
 {

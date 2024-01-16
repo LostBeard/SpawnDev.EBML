@@ -12,7 +12,7 @@
 		<Title>SpawnDev.EBML</Title>
 		<Authors>LostBeard</Authors>
 		<Description>
-			An extendable library for reading and writing Extensible Binary Meta Language (aka EBML) documents. Includes schema for Matroska and WebM.
+			An extendable .Net library for reading and writing Extensible Binary Meta Language (aka EBML) documents. Includes schema for Matroska and WebM.
 		</Description>
 		<PackageProjectUrl>https://github.com/LostBeard/SpawnDev.EBML</PackageProjectUrl>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
