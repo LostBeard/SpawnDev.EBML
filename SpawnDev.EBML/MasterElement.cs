@@ -8,10 +8,6 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace SpawnDev.EBML
 {
-    enum UnknownEnumType : ulong
-    {
-
-    }
     public class MasterElement : BaseElement<ReadOnlyCollection<BaseElement>>
     {
         public static readonly EBMLSchemaDefault DefaultEBMLSchema = new EBMLSchemaDefault();
