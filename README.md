@@ -6,13 +6,19 @@
 
 The demo project, EBMLViewer, included in the project is a .Net 8 Forms app for testing the library and viewing EBML documents.
 
+
+## EBMLDocumentReader
+
+EBMLDocumentReader is the base EBML document parser. The EBMLDocumentReader can be given a list of EBMLSchemas that tell it how to process EBML documents with a matching EBML.DocType value.
+
+## WebMDocumentReader
 To fix the duration in a WebM file, WebM parser reads the Timecode information from Clusters and SimpleBlocks and adds a Segment > Info > Duration element with the new duration.
 
 Example of how to add Duration info if not found in a the WebM stream.
 ```cs
 using var inputStream = new FileStream(inputFile, FileMode.Open, FileAccess.Read, FileShare.Read);
 
-var webm = new WebMStreamParser(inputStream);
+var webm = new WebMDocumentReader(inputStream);
 
 // FixDuration returns true if the WebM was modified
 var modified = webm.FixDuration();
@@ -25,44 +31,31 @@ if (modified)
 }
 ```
 
-Example that prints out basic info for every element found in the WebM stream
-```cs
-var elements = webm.Descendants;
-foreach (var element in elements)
-{
-    var indent = new string('-', element.IdChain.Length - 1);
-    Console.WriteLine($"{indent}{element}");
-}
-```
-
-
-
-
 Example of how to get an element
 ```cs
-var durationElement = webm.GetElement<FloatElement>(ElementId.Segment, ElementId.Info, ElementId.Duration);
+var durationElement = webm.GetElement<FloatElement>(MatroskaId.Segment, MatroskaId.Info, MatroskaId.Duration);
 var duration = durationElement?.Data ?? 0;
 ```
 
 Example of how to get all elements of a type
 ```cs
-var segments = webm.GetElements<ContainerElement>(ElementId.Segment);
+var segments = webm.GetElements<ContainerElement>(MatroskaId.Segment);
 ```
 
 Example of how to use ElementIds to walk the data tree and access information
 ```cs
-var segments = webm.GetContainers(ElementId.Segment);
+var segments = webm.GetContainers(MatroskaId.Segment);
 foreach (var segment in segments)
 {
-    var clusters = segment.GetContainers(ElementId.Cluster);
+    var clusters = segment.GetContainers(MatroskaId.Cluster);
     foreach (var cluster in clusters)
     {
-        var timecode = cluster.GetElement<UintElement>(ElementId.Timecode);
+        var timecode = cluster.GetElement<UintElement>(MatroskaId.Timecode);
         if (timecode != null)
         {
             duration = timecode.Data;
         };
-        var simpleBlocks = cluster.GetElements<SimpleBlockElement>(ElementId.SimpleBlock);
+        var simpleBlocks = cluster.GetElements<SimpleBlockElement>(MatroskaId.SimpleBlock);
         var simpleBlockLast = simpleBlocks.LastOrDefault();
         if (simpleBlockLast != null)
         {
@@ -75,6 +68,6 @@ foreach (var segment in segments)
 Example of how to add an element  
 All parent containers are automatically marked Modified if any children are added, removed, or changed.
 ```cs
-var info = GetContainer(ElementId.Segment, ElementId.Info);
-info!.Add(ElementId.Duration, 100000);
+var info = GetContainer(MatroskaId.Segment, MatroskaId.Info);
+info!.Add(MatroskaId.Duration, 100000);
 ```
