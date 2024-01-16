@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.9.34407.89
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpawnDev.EBML", "SpawnDev.EBML\SpawnDev.EBML.csproj", "{CCDBEDFE-2A94-4BA4-8E02-EEA5526CF798}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EBMLViewer", "EBMLViewer\EBMLViewer.csproj", "{A3A8363D-D866-4A98-A83D-4998CD195EB9}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CCDBEDFE-2A94-4BA4-8E02-EEA5526CF798}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CCDBEDFE-2A94-4BA4-8E02-EEA5526CF798}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CCDBEDFE-2A94-4BA4-8E02-EEA5526CF798}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CCDBEDFE-2A94-4BA4-8E02-EEA5526CF798}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A3A8363D-D866-4A98-A83D-4998CD195EB9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A3A8363D-D866-4A98-A83D-4998CD195EB9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A3A8363D-D866-4A98-A83D-4998CD195EB9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A3A8363D-D866-4A98-A83D-4998CD195EB9}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {73B33837-9A17-4E9D-BC20-A3338431CA0F}
+	EndGlobalSection
+EndGlobal
