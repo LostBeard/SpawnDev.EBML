@@ -12,6 +12,16 @@
             if (!BitConverter.IsLittleEndian) return BitConverter.ToDouble(bytes, startIndex);
             return BitConverter.ToDouble(bytes.ReverseSegment(startIndex, sizeof(double)));
         }
+        public static ushort ToUInt16(byte[] bytes, int startIndex = 0)
+        {
+            if (!BitConverter.IsLittleEndian) return BitConverter.ToUInt16(bytes, startIndex);
+            return BitConverter.ToUInt16(bytes.ReverseSegment(startIndex, sizeof(ushort)));
+        }
+        public static short ToInt16(byte[] bytes, int startIndex = 0)
+        {
+            if (!BitConverter.IsLittleEndian) return BitConverter.ToInt16(bytes, startIndex);
+            return BitConverter.ToInt16(bytes.ReverseSegment(startIndex, sizeof(short)));
+        }
         public static uint ToUInt32(byte[] bytes, int startIndex = 0)
         {
             if (!BitConverter.IsLittleEndian) return BitConverter.ToUInt32(bytes, startIndex);
@@ -40,6 +50,8 @@
         }
         public static byte[] GetBytes(float value) => BitConverter.GetBytes(value).ReverseIfLittleEndian();
         public static byte[] GetBytes(double value) => BitConverter.GetBytes(value).ReverseIfLittleEndian();
+        public static byte[] GetBytes(ushort value) => BitConverter.GetBytes(value).ReverseIfLittleEndian();
+        public static byte[] GetBytes(short value) => BitConverter.GetBytes(value).ReverseIfLittleEndian();
         public static byte[] GetBytes(uint value) => BitConverter.GetBytes(value).ReverseIfLittleEndian();
         public static byte[] GetBytes(int value) => BitConverter.GetBytes(value).ReverseIfLittleEndian();
         public static byte[] GetBytes(long value) => BitConverter.GetBytes(value).ReverseIfLittleEndian();

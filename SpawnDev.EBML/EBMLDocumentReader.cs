@@ -1,26 +1,54 @@
-﻿namespace SpawnDev.EBML
+﻿using System.Collections.ObjectModel;
+
+namespace SpawnDev.EBML
 {
+    public class DocTypeChangedEventArgs
+    {
+        /// <summary>
+        /// The current EBMLElement
+        /// </summary>
+        public EBMLElement EBML { get; init; }
+        /// <summary>
+        /// Get or set the EBMLSchema that should be used for the given EBML document
+        /// </summary>
+        public EBMLSchema? Schema { get; set; }
+
+    }
     /// <summary>
     /// A .Net EBML library for reading and writing EBML streams<br />
     /// https://github.com/ietf-wg-cellar/ebml-specification/blob/master/specification.markdown<br />
     /// </summary>
     public class EBMLDocumentReader : MasterElement
     {
-        public List<EBMLSchema> Schemas { get; set; } = new List<EBMLSchema> { };
+        private Dictionary<string, EBMLSchema> _Schemas { get; } = new Dictionary<string, EBMLSchema>();
+        public ReadOnlyCollection<EBMLSchema> Schemas => _Schemas.Values.ToList().AsReadOnly();
 
-        public string DocType => EBML == null ? "?" : EBML.DocType ?? "?";
+        public string DocType => EBML == null ? "" : EBML.DocType ?? "";
+        /// <summary>
+        /// Add an EBML schema for use when decoding EBML
+        /// </summary>
+        /// <param name="schema"></param>
+        public void AddSchema(EBMLSchema schema) => _Schemas[schema.DocType] = schema;
+        public void AddSchemas(List<EBMLSchema> schemas) => schemas.ForEach(AddSchema);
+        public bool RemoveSchema(string docType) => _Schemas.Remove(docType);
 
-        public EBMLSchema GetSchema(string docType)
-        {
-            return Schemas.FirstOrDefault(o => o.DocType == docType) ?? DefaultEBMLSchema;
-        }
+        /// <summary>
+        /// Called when an EBML element is loaded from the document<br />
+        /// The EBMLSchema property Schema can be set based on the EBML element data
+        /// </summary>
+        public event EventHandler<DocTypeChangedEventArgs> OnEBMLFound;
 
         protected override void EBMLElementFound(EBMLElement ebml)
         {
-            var schema = Schemas.FirstOrDefault(o => o.DocType == ebml.DocType);
-            if (schema != null)
+            var args = new DocTypeChangedEventArgs
             {
-                _ActiveSchema = schema;
+                EBML = ebml,
+                Schema = !string.IsNullOrEmpty(ebml.DocType) && _Schemas.TryGetValue(ebml.DocType, out var knownSchema) ? knownSchema : null,
+            };
+            OnEBMLFound?.Invoke(this, args);
+            if (args.Schema != null)
+            {
+                _ActiveSchema = args.Schema;
             }
         }
 
@@ -30,7 +58,7 @@
         {
             if (schemas != null)
             {
-                Schemas = schemas;
+                AddSchemas(schemas);
             }
             if (stream != null)
             {

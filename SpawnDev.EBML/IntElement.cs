@@ -22,10 +22,12 @@
         {
             _DataStream = new Lazy<SegmentSource?>(() =>
             {
-                // switch endianness and remove preceding 0 bytes
-                var bytes = BitConverter.GetBytes(Data).Reverse().ToList();
-                while (bytes.Count > 1 && bytes[0] == 0) bytes.RemoveAt(0);
-                return new ByteSegment(bytes.ToArray());
+                //// switch endianness and remove preceding 0 bytes
+                //var bytes = BitConverter.GetBytes(Data).Reverse().ToList();
+                //while (bytes.Count > 1 && bytes[0] == 0) bytes.RemoveAt(0);
+                //return new ByteSegment(bytes.ToArray());
+                var bytes = EBMLConverter.ToIntBytes(Data);
+                return new ByteSegment(bytes);
             });
         }
     }

@@ -21,9 +21,11 @@
         {
             _DataStream = new Lazy<SegmentSource?>(() =>
             {
-                var bytes = BitConverter.GetBytes(Data).Reverse().ToList();
-                while (bytes.Count > 1 && bytes[0] == 0) bytes.RemoveAt(0);
-                return new ByteSegment(bytes.ToArray());
+                //var bytes = BigEndian.GetBytes(Data).ToList();
+                //while (bytes.Count > 1 && bytes[0] == 0) bytes.RemoveAt(0);
+                //return new ByteSegment(bytes.ToArray());
+                var bytes = EBMLConverter.ToUIntBytes(Data);
+                return new ByteSegment(bytes);
             });
         }
     }

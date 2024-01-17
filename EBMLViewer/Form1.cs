@@ -136,8 +136,9 @@ namespace EBMLViewer
                 CloseSource();
                 return;
             }
-            Text = $"{DefaultTitle} - {Parser.DocType} - {sourceFilename}";
-            TreeNode sourceNode = new TreeNode($"{Parser.DocType} - {sourceFilename}");
+            var docType = string.IsNullOrEmpty(Parser!.DocType) ? "?" : Parser.DocType;
+            Text = $"{DefaultTitle} - {docType} - {sourceFilename}";
+            TreeNode sourceNode = new TreeNode($"{docType} - {sourceFilename}");
             sourceNode.Tag = Parser;
             sourceNode.Nodes.Add(loadingReadyText);
             treeView1.Nodes.Add(sourceNode);

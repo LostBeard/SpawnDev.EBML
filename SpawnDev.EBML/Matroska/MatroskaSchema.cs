@@ -2,7 +2,13 @@
 {
     public class MatroskaSchema : EBMLSchema<MatroskaId>
     {
+        /// <summary>
+        /// Schema DocType
+        /// </summary>
         public override string DocType { get; } = "matroska";
+        /// <summary>
+        /// The element ids that a cluster can contain. Used when detecting the end of a cluster.
+        /// </summary>
         static List<MatroskaId> ClusterChildIds = new List<MatroskaId>
         {
             MatroskaId.Timecode,
@@ -27,6 +33,12 @@
             MatroskaId.Tags,
             MatroskaId.Void,
         };
+        /// <summary>
+        /// Used when trying to determine if an element is a child of an element of unknown size
+        /// </summary>
+        /// <param name="parentIdChain"></param>
+        /// <param name="childElementId"></param>
+        /// <returns></returns>
         public override bool ValidChildCheck(MatroskaId[] parentIdChain, MatroskaId childElementId)
         {
             switch (parentIdChain.Last())
@@ -36,13 +48,17 @@
             }
             return false;
         }
+        /// <summary>
+        /// Returns the type to be used for the given elementId, or null if unknown.
+        /// </summary>
+        /// <param name="elementId"></param>
+        /// <returns></returns>
         public override Type? GetElementType(MatroskaId elementId)
         {
             return ElementTypeMap.TryGetValue(elementId, out var ret) ? ret : null;
         }
         /// <summary>
-        /// ElementIds mapped to the type that will be used to represent the specified element<br />
-        /// The 
+        /// ElementIds mapped to the type that will be used to represent the specified element
         /// </summary>
         public static Dictionary<MatroskaId, Type> ElementTypeMap { get; } = new Dictionary<MatroskaId, Type>
         {

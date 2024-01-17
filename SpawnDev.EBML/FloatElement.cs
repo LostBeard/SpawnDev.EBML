@@ -18,10 +18,11 @@
         }
         public override void UpdateBySource()
         {
+            DataSize = (int)Stream!.Length;
             _DataValue = new Lazy<double>(() =>
             {
-                Stream!.Position = 0;
                 DataSize = (int)Stream!.Length;
+                Stream!.Position = 0;
                 return Stream!.ReadEBMLFloat(DataSize);
             });
         }
