@@ -3,8 +3,13 @@
     public class SimpleBlockElement : BinaryElement
     {
         public SimpleBlockElement(Enum id) : base(id) { }
-        public byte TrackId => (byte)(Stream!.ReadByteOrThrow(0) & ~0x80);
-        public uint Timecode => BigEndian.ToUInt16(Stream!.ReadBytes(1, 2));
+        public ulong TrackId { get; private set; }
+        public short Timecode { get; private set; }
         public override string ToString() => $"{Index} {Id} - IdChain: [ {IdChain.ToString(", ")} ] Type: {GetType().Name} Length: {Length} bytes TrackId: {TrackId} Timecode: {Timecode}";
+        public override void UpdateBySource()
+        {
+            TrackId = Stream!.ReadEBMLVINT(out var vintDataAllOnes);
+            Timecode = BigEndian.ToInt16(Stream!.ReadBytes(1, 2));
+        }
     }
 }

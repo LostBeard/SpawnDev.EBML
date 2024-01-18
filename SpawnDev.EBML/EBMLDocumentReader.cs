@@ -62,9 +62,9 @@ namespace SpawnDev.EBML
             }
             if (stream != null)
             {
-                if (typeof(SegmentSource).IsAssignableFrom(stream.GetType()))
+                if (stream is SegmentSource segmentSource)
                 {
-                    Stream = (SegmentSource)stream;
+                    Stream = segmentSource;
                 }
                 else
                 {
