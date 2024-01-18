@@ -114,28 +114,6 @@ namespace SpawnDev.EBML
         }
         public static ulong ReadEBMLElementId(this Stream data, out bool isInvalid) => data.ReadEBMLVINT(out isInvalid);
         public static ulong ReadEBMLElementId(this Stream data) => data.ReadEBMLVINT(out var isInvalid);
-        //public static T ReadEBMLElementId<T>(this Stream data, out bool isInvalid) where T : struct => (T)(object)ReadEBMLElementId(data, out isInvalid);
-        //public static T ReadEBMLElementId<T>(this Stream data) where T : struct => (T)(object)ReadEBMLElementId(data, out var isInvalid);
-        //public static EBMLEntry<T> ReadEntry<T>(this Stream fileStream, ValidChildCheckDelegate<T> ValidChildCheck, bool moveToEndOfElement = true) where T : struct
-        //{
-        //    var pos = fileStream.Position;
-        //    var id = fileStream.ReadEBMLElementId<T>();
-        //    var len = fileStream.ReadEBMLElementSize(id, ValidChildCheck);
-        //    var dpos = fileStream.Position;
-        //    var ret = new EBMLEntry<T>(pos, id, dpos, len);
-        //    if (moveToEndOfElement) fileStream.Position = (long)(dpos + (long)len);
-        //    return ret;
-        //}
-        //public static EBMLEntry ReadEntry(this Stream fileStream, ValidElementChildCheckDelegate ValidChildCheck, bool moveToEndOfElement = true) 
-        //{
-        //    var pos = fileStream.Position;
-        //    var id = fileStream.ReadEBMLElementId();
-        //    var len = fileStream.ReadEBMLElementSize(id, ValidChildCheck);
-        //    var dpos = fileStream.Position;
-        //    var ret = new EBMLEntry(pos, id, dpos, len);
-        //    if (moveToEndOfElement) fileStream.Position = (long)(dpos + (long)len);
-        //    return ret;
-        //}
         public static ulong ReadEBMLElementSize(this Stream data, out bool isUnknownSize) => data.ReadEBMLVINT(out isUnknownSize);
         public delegate bool ValidElementChildCheckDelegate(ulong[] parentIdChain, ulong childElementId);
         public delegate bool ValidElementChildCheckEnumDelegate(Enum[] parentIdChain, Enum childElementId);
@@ -198,6 +176,13 @@ namespace SpawnDev.EBML
             }
             stream.Position = startOffset;
             return (ulong)(pos - startOffset);
+        }
+        public static Stream SkipEBMLVINT(this Stream data)
+        {
+            var firstByte = data.ReadByteOrThrow();
+            var bitIndex = GetFirstSetBitIndex(firstByte, out var leftover);
+            if (bitIndex > 0) data.Position += bitIndex;
+            return data;
         }
         public static ulong ReadEBMLVINT(this Stream data, out bool vintDataAllOnes)
         {
