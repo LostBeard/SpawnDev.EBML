@@ -1,4 +1,5 @@
 ﻿using SpawnDev.EBML.Matroska;
+using System.Diagnostics.Metrics;
 
 namespace SpawnDev.EBML.WebM
 {
@@ -234,20 +235,23 @@ namespace SpawnDev.EBML.WebM
         public virtual double GetDurationEstimate()
         {
             if (EBML == null) return 0;
-            double duration = 0;
-            var clusters = GetContainers(MatroskaId.Segment, MatroskaId.Cluster);
-            foreach (var cluster in clusters)
+            var lastCluster = GetContainers(MatroskaId.Segment, MatroskaId.Cluster).LastOrDefault();
+            if (lastCluster == null) return 0;
+            var timecode = lastCluster.GetElement<UintElement>(MatroskaId.Timecode);
+            if (timecode == null) return 0;
+            double duration = timecode.Data;
+            var simpleBlocks = lastCluster.GetElements<SimpleBlockElement>(MatroskaId.SimpleBlock);
+            var simpleBlockLast = simpleBlocks.LastOrDefault();
+            if (simpleBlockLast != null)
             {
-                var timecode = cluster.GetElement<UintElement>(MatroskaId.Timecode);
-                if (timecode != null)
+                var trackId = simpleBlockLast.TrackId;
+                var trackSimpleBlocks = simpleBlocks.Where(o => o.TrackId == trackId).ToList();
+                duration += simpleBlockLast.Timecode;
+                if (trackSimpleBlocks.Count > 1)
                 {
-                    duration = timecode.Data;
-                };
-                var simpleBlocks = cluster.GetElements<SimpleBlockElement>(MatroskaId.SimpleBlock);
-                var simpleBlockLast = simpleBlocks.LastOrDefault();
-                if (simpleBlockLast != null)
-                {
-                    duration += simpleBlockLast.Timecode;
+                    var i = trackSimpleBlocks.Count - 2;
+                    var blockDuration = (double)trackSimpleBlocks[i + 1].Timecode - (double)trackSimpleBlocks[i].Timecode;
+                    duration += blockDuration;
                 }
             }
             return duration;

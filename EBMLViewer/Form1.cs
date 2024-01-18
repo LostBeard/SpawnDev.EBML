@@ -1,14 +1,5 @@
 using SpawnDev.EBML;
-using SpawnDev.EBML.Matroska;
 using SpawnDev.EBML.WebM;
-using System.ComponentModel.DataAnnotations;
-using System.IO;
-using System.IO.Pipes;
-using System.Linq;
-using System.Reflection.Metadata;
-using System.Windows.Forms;
-using System.Xml.Linq;
-using static EBMLViewer.Form1;
 
 namespace EBMLViewer
 {
@@ -136,9 +127,14 @@ namespace EBMLViewer
                 CloseSource();
                 return;
             }
-            var docType = string.IsNullOrEmpty(Parser!.DocType) ? "?" : Parser.DocType;
+            if (Parser == null)
+            {
+                CloseSource();
+                return;
+            }
+            var docType = string.IsNullOrEmpty(Parser.DocType) ? "?" : Parser.DocType;
             Text = $"{DefaultTitle} - {docType} - {sourceFilename}";
-            TreeNode sourceNode = new TreeNode($"{docType} - {sourceFilename}");
+            var sourceNode = new TreeNode($"{docType} - {sourceFilename}");
             sourceNode.Tag = Parser;
             sourceNode.Nodes.Add(loadingReadyText);
             treeView1.Nodes.Add(sourceNode);
