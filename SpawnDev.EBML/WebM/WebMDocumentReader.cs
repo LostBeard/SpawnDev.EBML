@@ -2,15 +2,25 @@
 
 namespace SpawnDev.EBML.WebM
 {
+    /// <summary>
+    /// WebM and Matroska document reader
+    /// </summary>
     public class WebMDocumentReader : EBMLDocumentReader
     {
         public WebMDocumentReader(Stream? stream = null) : base(stream, new List<EBMLSchema> { new WebMSchema(), new MatroskaSchema() })
         {
-            
-        }
 
+        }
         /// <summary>
-        /// Get and Set for TimecodeScale from the first segment block
+        /// Returns the segment element if it exists
+        /// </summary>
+        public MasterElement? Segment => GetElement<MasterElement>(MatroskaId.Segment);
+        /// <summary>
+        /// Returns the segment info element if it exists
+        /// </summary>
+        public MasterElement? SegmentInfo => GetElement<MasterElement>(MatroskaId.Segment, MatroskaId.Info);
+        /// <summary>
+        /// Get and Set for TimecodeScale from the segment info element
         /// </summary>
         public virtual uint? TimecodeScale
         {
@@ -44,8 +54,10 @@ namespace SpawnDev.EBML.WebM
                 }
             }
         }
-
-        string? Title
+        /// <summary>
+        /// Returns the title string from the segment info element
+        /// </summary>
+        public virtual string? Title
         {
             get
             {
@@ -76,8 +88,10 @@ namespace SpawnDev.EBML.WebM
                 }
             }
         }
-
-        string? MuxingApp
+        /// <summary>
+        /// Returns the muxing app string from the segment info element
+        /// </summary>
+        public virtual string? MuxingApp
         {
             get
             {
@@ -85,8 +99,10 @@ namespace SpawnDev.EBML.WebM
                 return docType != null ? docType.Data : null;
             }
         }
-
-        string? WritingApp
+        /// <summary>
+        /// Returns the writing app string from the segment info element
+        /// </summary>
+        public virtual string? WritingApp
         {
             get
             {
@@ -94,21 +110,13 @@ namespace SpawnDev.EBML.WebM
                 return docType != null ? docType.Data : null;
             }
         }
-
-        //string? EBMLDocType
-        //{
-        //    get
-        //    {
-        //        var docType = GetElement<StringElement>(MatroskaId.EBML, MatroskaId.DocType);
-        //        return docType != null ? docType.Data : null;
-        //    }
-        //}
-
         /// <summary>
         /// Returns true if audio tracks exist
         /// </summary>
         public virtual bool HasAudio => GetElements<TrackEntryElement>(MatroskaId.Segment, MatroskaId.Tracks, MatroskaId.TrackEntry).Where(o => o.TrackType == TrackType.Audio).Any();
-
+        /// <summary>
+        /// Returns the audio channels value from the first audio track
+        /// </summary>
         public virtual uint? AudioChannels
         {
             get
@@ -117,6 +125,9 @@ namespace SpawnDev.EBML.WebM
                 return channels != null ? (uint)channels : null;
             }
         }
+        /// <summary>
+        /// Returns the audio sampling frequency of the first audio track
+        /// </summary>
         public virtual double? AudioSamplingFrequency
         {
             get
@@ -125,6 +136,9 @@ namespace SpawnDev.EBML.WebM
                 return samplingFrequency != null ? (double)samplingFrequency : null;
             }
         }
+        /// <summary>
+        /// Returns the audio bit depth of the first audio track
+        /// </summary>
         public virtual uint? AudioBitDepth
         {
             get
@@ -133,35 +147,36 @@ namespace SpawnDev.EBML.WebM
                 return bitDepth != null ? (uint)bitDepth : null;
             }
         }
-
-
+        /// <summary>
+        /// Returns a list of video TrackEntryElements
+        /// </summary>
+        /// <returns></returns>
+        public List<TrackEntryElement> VideoTracks => GetElements<TrackEntryElement>(MatroskaId.Segment, MatroskaId.Tracks, MatroskaId.TrackEntry).Where(o => o.TrackType == TrackType.Video).ToList();
+        /// <summary>
+        /// Returns a list of audio TrackEntryElements
+        /// </summary>
+        /// <returns></returns>
+        public List<TrackEntryElement> AudioTracks => GetElements<TrackEntryElement>(MatroskaId.Segment, MatroskaId.Tracks, MatroskaId.TrackEntry).Where(o => o.TrackType == TrackType.Audio).ToList();
         /// <summary>
         /// Returns true if video tracks exist
         /// </summary>
         public virtual bool HasVideo => GetElements<TrackEntryElement>(MatroskaId.Segment, MatroskaId.Tracks, MatroskaId.TrackEntry).Where(o => o.TrackType == TrackType.Video).Any();
-
-        public virtual string VideoCodecID => GetElements<TrackEntryElement>(MatroskaId.Segment, MatroskaId.Tracks, MatroskaId.TrackEntry).Where(o => o.TrackType == TrackType.Video).FirstOrDefault()?.CodecID ?? "";
-
-        public virtual string AudioCodecID => GetElements<TrackEntryElement>(MatroskaId.Segment, MatroskaId.Tracks, MatroskaId.TrackEntry).Where(o => o.TrackType == TrackType.Audio).FirstOrDefault()?.CodecID ?? "";
-
-        public virtual uint? VideoPixelWidth
-        {
-            get
-            {
-                var pixelWidth = GetElement<UintElement>(MatroskaId.Segment, MatroskaId.Tracks, MatroskaId.TrackEntry, MatroskaId.Video, MatroskaId.PixelWidth);
-                return pixelWidth != null ? (uint)pixelWidth : null;
-            }
-        }
-
-        public virtual uint? VideoPixelHeight
-        {
-            get
-            {
-                var pixelHeight = GetElement<UintElement>(MatroskaId.Segment, MatroskaId.Tracks, MatroskaId.TrackEntry, MatroskaId.Video, MatroskaId.PixelHeight);
-                return pixelHeight != null ? (uint)pixelHeight : null;
-            }
-        }
-
+        /// <summary>
+        /// Returns the video codec id of the first video track
+        /// </summary>
+        public virtual string? VideoCodecID => GetElements<TrackEntryElement>(MatroskaId.Segment, MatroskaId.Tracks, MatroskaId.TrackEntry).Where(o => o.TrackType == TrackType.Video).FirstOrDefault()?.CodecID;
+        /// <summary>
+        /// Returns the audio codec id of the first audio track
+        /// </summary>
+        public virtual string? AudioCodecID => GetElements<TrackEntryElement>(MatroskaId.Segment, MatroskaId.Tracks, MatroskaId.TrackEntry).Where(o => o.TrackType == TrackType.Audio).FirstOrDefault()?.CodecID;
+        /// <summary>
+        /// Returns the video pixel width of the first video track
+        /// </summary>
+        public virtual uint? VideoPixelWidth => (uint?)GetElement<UintElement>(MatroskaId.Segment, MatroskaId.Tracks, MatroskaId.TrackEntry, MatroskaId.Video, MatroskaId.PixelWidth);
+        /// <summary>
+        /// Returns the video pixel height of the first video track
+        /// </summary>
+        public virtual uint? VideoPixelHeight => (uint?)GetElement<UintElement>(MatroskaId.Segment, MatroskaId.Tracks, MatroskaId.TrackEntry, MatroskaId.Video, MatroskaId.PixelHeight);
         /// <summary>
         /// Get and Set for the first segment block duration
         /// </summary>
@@ -197,7 +212,6 @@ namespace SpawnDev.EBML.WebM
                 }
             }
         }
-
         /// <summary>
         /// If the Duration is not set in the first segment block, the duration will be calculated using Cluster and SimpleBlock data and written to Duration
         /// </summary>
@@ -213,7 +227,6 @@ namespace SpawnDev.EBML.WebM
             }
             return false;
         }
-
         /// <summary>
         /// Duration calculated using Cluster and SimpleBlock data and written to Duration
         /// </summary>
@@ -222,23 +235,19 @@ namespace SpawnDev.EBML.WebM
         {
             if (EBML == null) return 0;
             double duration = 0;
-            var segments = GetContainers(MatroskaId.Segment);
-            foreach (var segment in segments)
+            var clusters = GetContainers(MatroskaId.Segment, MatroskaId.Cluster);
+            foreach (var cluster in clusters)
             {
-                var clusters = segment.GetContainers(MatroskaId.Cluster);
-                foreach (var cluster in clusters)
+                var timecode = cluster.GetElement<UintElement>(MatroskaId.Timecode);
+                if (timecode != null)
                 {
-                    var timecode = cluster.GetElement<UintElement>(MatroskaId.Timecode);
-                    if (timecode != null)
-                    {
-                        duration = timecode.Data;
-                    };
-                    var simpleBlocks = cluster.GetElements<SimpleBlockElement>(MatroskaId.SimpleBlock);
-                    var simpleBlockLast = simpleBlocks.LastOrDefault();
-                    if (simpleBlockLast != null)
-                    {
-                        duration += simpleBlockLast.Timecode;
-                    }
+                    duration = timecode.Data;
+                };
+                var simpleBlocks = cluster.GetElements<SimpleBlockElement>(MatroskaId.SimpleBlock);
+                var simpleBlockLast = simpleBlocks.LastOrDefault();
+                if (simpleBlockLast != null)
+                {
+                    duration += simpleBlockLast.Timecode;
                 }
             }
             return duration;

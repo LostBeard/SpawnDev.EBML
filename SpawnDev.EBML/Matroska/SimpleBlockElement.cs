@@ -8,6 +8,7 @@
         public override string ToString() => $"{Index} {Id} - IdChain: [ {IdChain.ToString(", ")} ] Type: {GetType().Name} Length: {Length} bytes TrackId: {TrackId} Timecode: {Timecode}";
         public override void UpdateBySource()
         {
+            Stream!.Position = 0;
             TrackId = Stream!.ReadEBMLVINT(out var vintDataAllOnes);
             Timecode = BigEndian.ToInt16(Stream!.ReadBytes(1, 2));
         }

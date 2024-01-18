@@ -51,12 +51,19 @@
             }
             return Position;
         }
+        /// <summary>
+        /// Returns a new instance of this type with the same source, representing a segment of this instance
+        /// </summary>
+        /// <param name="offset"></param>
+        /// <param name="size"></param>
+        /// <returns></returns>
         public virtual SegmentSource Slice(long offset, long size)
         {
-            var slice =  (SegmentSource)Activator.CreateInstance(this.GetType(), SourceObject, offset, size, OwnsSource)!;
+            var slice =  (SegmentSource)Activator.CreateInstance(GetType(), SourceObject, Offset + offset, size, OwnsSource)!;
+            if (slice.Position != 0) slice.Position = 0;
             return slice;
         }
-        public SegmentSource Slice(long size) => Slice(SourcePosition, size);
+        public SegmentSource Slice(long size) => Slice(Position, size);
         public override void CopyTo(Stream destination, int bufferSize)
         {
             base.CopyTo(destination, bufferSize);
