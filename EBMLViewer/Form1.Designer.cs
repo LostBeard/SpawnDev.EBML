@@ -108,7 +108,7 @@
             // addDurationToolStripMenuItem
             // 
             addDurationToolStripMenuItem.Name = "addDurationToolStripMenuItem";
-            addDurationToolStripMenuItem.Size = new Size(180, 22);
+            addDurationToolStripMenuItem.Size = new Size(145, 22);
             addDurationToolStripMenuItem.Text = "Add Duration";
             addDurationToolStripMenuItem.Click += addDurationToolStripMenuItem_Click;
             // 
@@ -131,7 +131,7 @@
             // 
             splitContainer1.Panel1.Controls.Add(treeView1);
             splitContainer1.Size = new Size(1000, 584);
-            splitContainer1.SplitterDistance = 814;
+            splitContainer1.SplitterDistance = 507;
             splitContainer1.TabIndex = 2;
             splitContainer1.SplitterMoved += splitContainer1_SplitterMoved;
             // 
@@ -140,7 +140,7 @@
             treeView1.Dock = DockStyle.Fill;
             treeView1.Location = new Point(0, 0);
             treeView1.Name = "treeView1";
-            treeView1.Size = new Size(814, 584);
+            treeView1.Size = new Size(507, 584);
             treeView1.TabIndex = 0;
             treeView1.AfterSelect += treeView1_AfterSelect;
             // 

@@ -74,7 +74,7 @@ info!.Add(MatroskaId.Duration, 100000);
 ```
 
 # EBMLViewer
-EBMLViewer is a demo app for the library. Supports WebM, Matroska, or any  other EBML documents.
+EBMLViewer is a demo app for the library. Supports WebM, Matroska, and other EBML document types.
 
-![](https://raw.githubusercontent.com/LostBeard/SpawnDev.EBML/main/EBMLViewer/Images/Screenshot_2.jpg)
+![](https://raw.githubusercontent.com/LostBeard/SpawnDev.EBML/main/EBMLViewer/Images/Screenshot_3.jpg)
 

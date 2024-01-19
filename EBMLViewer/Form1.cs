@@ -1,3 +1,4 @@
+using EBMLViewer.Controls;
 using SpawnDev.EBML;
 using SpawnDev.EBML.WebM;
 
@@ -25,6 +26,7 @@ namespace EBMLViewer
             {
                 return;
             }
+            UnloadNodeView();
             fileStream?.Dispose();
             fileStream = null;
             SourceFile = "";
@@ -48,6 +50,36 @@ namespace EBMLViewer
         private void Form1_Load(object sender, EventArgs e)
         {
             treeView1.BeforeExpand += TreeView1_BeforeExpand;
+            treeView1.AfterSelect += TreeView1_AfterSelect;
+        }
+
+        UserControl? nodeView = null;
+
+        void UnloadNodeView()
+        {
+            if (nodeView == null) return;
+            splitContainer1.Panel2.Controls.Remove(nodeView);
+            nodeView.Dispose();
+            nodeView = null;
+        }
+        void LoadNodeView(BaseElement? element)
+        {
+            if (element == null) return;
+            if (nodeView != null) UnloadNodeView();
+            var elementType = element.GetType();
+            var elementViewType = EBMLFormsControls.ElementToControlTypeMap.TryGetValue(elementType, out var et) ? et : typeof(BaseElementView);
+            nodeView = (UserControl)Activator.CreateInstance(elementViewType)!;
+            var elementControl = (IElementControl)nodeView;
+            elementControl.LoadElement(element);
+            nodeView.Dock = DockStyle.Fill;
+            splitContainer1.Panel2.Controls.Add(nodeView);
+        }
+
+        private void TreeView1_AfterSelect(object? sender, TreeViewEventArgs e)
+        {
+            UnloadNodeView();
+            LoadNodeView((BaseElement?)e.Node?.Tag);
+
         }
 
         private void TreeView1_BeforeExpand(object? sender, TreeViewCancelEventArgs e)
