@@ -75,8 +75,12 @@ namespace EBMLViewer
                             track.TrackNumber -= 1;
                         }
                     }
-                    // Still may have issues with Cues and SeekHead if they are not removed
-                    // ...
+                    // Update SeekHead and Cues
+                    // ATM just removing them as the resulting media file will play without them. 
+                    var seekHead = Parser.GetContainer(MatroskaId.Segment, MatroskaId.SeekHead);
+                    if (seekHead != null) seekHead.Remove();
+                    var cues = Parser.GetContainer(MatroskaId.Segment, MatroskaId.Cues);
+                    if (cues != null) cues.Remove();
                 }
                 PopulateNode(treeView1.Nodes[0], forceRefrash: true);
             }
