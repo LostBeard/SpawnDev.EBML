@@ -184,6 +184,23 @@ namespace SpawnDev.EBML
             if (bitIndex > 0) data.Position += bitIndex;
             return data;
         }
+        public static ulong ReadEBMLVINT(this Stream data)
+        {
+            var firstByte = data.ReadByteOrThrow();
+            var bitIndex = GetFirstSetBitIndex(firstByte, out var leftover);
+            if (bitIndex < 0)
+            {
+                ////vintDataAllOnes = false;
+                // throw?
+                return 0; // marker bit must be in first byte (verify correct response to this) 
+            }
+            var ulongBytes = new byte[8];
+            var destIndex = 8 - bitIndex;
+            ulongBytes[destIndex - 1] = leftover;
+            if (bitIndex > 0) data.Read(ulongBytes, destIndex, bitIndex);
+            var ret = BigEndian.ToUInt64(ulongBytes);
+            return ret;
+        }
         public static ulong ReadEBMLVINT(this Stream data, out bool vintDataAllOnes)
         {
             var firstByte = data.ReadByteOrThrow();

@@ -1,5 +1,6 @@
 using EBMLViewer.Controls;
 using SpawnDev.EBML;
+using SpawnDev.EBML.Matroska;
 using SpawnDev.EBML.WebM;
 
 namespace EBMLViewer
@@ -16,6 +17,73 @@ namespace EBMLViewer
         {
             InitializeComponent();
             Text = DefaultTitle;
+            var deleteOption = new ToolStripMenuItem { Text = "Delete", Name = "delete", };
+            deleteOption.Click += DeleteOption_Click;
+            baseElementContextMenu.Items.Add(deleteOption);
+        }
+
+        private void DeleteOption_Click(object? sender, EventArgs e)
+        {
+            if (Parser == null) return;
+            var node = treeView1.SelectedNode;
+            if (node == null) return;
+            var element = (BaseElement?)node.Tag;
+            if (element == null) return;
+            var trackEntryElement = element as TrackEntryElement;
+            var trackId = trackEntryElement?.TrackNumber ?? 0;
+            element.Remove();
+            var parentNode = node.Parent;
+            if (parentNode == null) return;
+            //
+            if (trackEntryElement != null)
+            {
+                var resp = MessageBox.Show($"Delete all SimpleBlocks that belong to this track and update the other track ids if needed?", "Remove track blocks?", MessageBoxButtons.YesNo);
+                if (resp == DialogResult.Yes)
+                {
+                    // remove SimpleBlocks for the specified track and update trackId of others if needed.
+                    var simpleBlocks = Parser.GetElements<SimpleBlockElement>(MatroskaId.Segment, MatroskaId.Cluster, MatroskaId.SimpleBlock);
+                    foreach (var simpleBlock1 in simpleBlocks)
+                    {
+                        if (simpleBlock1.TrackId > trackId)
+                        {
+                            simpleBlock1.TrackId -= 1;
+                        }
+                        else if (simpleBlock1.TrackId == trackId)
+                        {
+                            simpleBlock1.Remove();
+                        }
+                    }
+                    // remove Blocks for the specified track and update trackId of others if needed.
+                    var blocks = Parser.GetElements<BlockElement>(MatroskaId.Segment, MatroskaId.Cluster, MatroskaId.BlockGroup, MatroskaId.Block);
+                    foreach (var block in blocks)
+                    {
+                        if (block.TrackId > trackId)
+                        {
+                            block.TrackId -= 1;
+                        }
+                        else if (block.TrackId == trackId)
+                        {
+                            block.Parent!.Remove();
+                        }
+                    }
+                    // update trackId of other tracks if needed.
+                    var tracks = Parser.Tracks;
+                    foreach (var track in tracks)
+                    {
+                        if (track.TrackNumber > trackId)
+                        {
+                            track.TrackNumber -= 1;
+                        }
+                    }
+                    // Still may have issues with Cues and SeekHead if they are not removed
+                    // ...
+                }
+                PopulateNode(treeView1.Nodes[0], forceRefrash: true);
+            }
+            else
+            {
+                PopulateNode(parentNode, forceRefrash: true);
+            }
         }
 
         bool eventAttached = false;
@@ -45,6 +113,7 @@ namespace EBMLViewer
             addDurationToolStripMenuItem.Enabled = false;
             webMOptionsToolStripMenuItem.Visible = false;
             saveToolStripMenuItem.Enabled = false;
+            saveAsToolStripMenuItem.Enabled = false;
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -79,7 +148,6 @@ namespace EBMLViewer
         {
             UnloadNodeView();
             LoadNodeView((BaseElement?)e.Node?.Tag);
-
         }
 
         private void TreeView1_BeforeExpand(object? sender, TreeViewCancelEventArgs e)
@@ -91,16 +159,62 @@ namespace EBMLViewer
             }
         }
 
+        string ShowSaveAsDialog()
+        {
+            if (string.IsNullOrEmpty(SourceFile)) return "";
+            var dir = Path.GetDirectoryName(SourceFile);
+            var ext = Path.GetExtension(SourceFile);
+            var filename = Path.GetFileName(SourceFile);
+            ext = string.IsNullOrEmpty(ext) || !ext.StartsWith(".") ? "" : ext.Substring(1);
+            var saveFileDialog1 = new SaveFileDialog();
+            saveFileDialog1.InitialDirectory = dir;
+            saveFileDialog1.FileName = filename;
+            saveFileDialog1.Title = "Save as";
+            saveFileDialog1.CheckFileExists = false;
+            saveFileDialog1.CheckPathExists = true;
+            saveFileDialog1.DefaultExt = ext;
+            var currentExtFilter = string.IsNullOrEmpty(ext) ? "" : $"{saveFileDialog1.DefaultExt} files (*.{saveFileDialog1.DefaultExt})|*.{saveFileDialog1.DefaultExt}|";
+            saveFileDialog1.Filter = $"{currentExtFilter}All files (*.*)|*.*";
+            saveFileDialog1.RestoreDirectory = true;
+            return saveFileDialog1.ShowDialog() == DialogResult.OK ? saveFileDialog1.FileName : "";
+        }
+
+        void SaveAsChanges()
+        {
+            var destFile = ShowSaveAsDialog();
+            SaveChanges(destFile, false);
+        }
+
         void SaveChanges()
         {
-            if (Parser == null || string.IsNullOrEmpty(SourceFile)) return;
+            SaveChanges(SourceFile);
+        }
+
+        void SaveChanges(string destFile, bool confirmOverwrite = true)
+        {
+            if (Parser == null || string.IsNullOrEmpty(SourceFile) || string.IsNullOrEmpty(destFile)) return;
             var sourceFile = SourceFile;
+            var destFileOrig = destFile;
+            var filename = Path.GetFileName(destFile);
+            var dir = Path.GetDirectoryName(destFile);
+            var exists = File.Exists(destFile);
+            if (confirmOverwrite && exists)
+            {
+                var resp = MessageBox.Show($"Are you sure you want to overwrite {filename}?", "Warning: File will be overwritten.", MessageBoxButtons.OKCancel);
+                if (resp != DialogResult.OK)
+                {
+                    return;
+                }
+            }
+
             try
             {
-                var sourceFilenameBase = Path.GetFileNameWithoutExtension(SourceFile);
-                var ext = Path.GetExtension(SourceFile);
-                var dir = Path.GetDirectoryName(SourceFile);
-                var destFile = Path.Combine(dir, $"{sourceFilenameBase}.fixed_temp{ext}");
+                var destIsSource = destFile.Equals(sourceFile, StringComparison.OrdinalIgnoreCase);
+                if (destIsSource) destFile = Path.Combine(dir, Guid.NewGuid().ToString());
+                else if (exists)
+                {
+                    File.Delete(destFile);
+                }
                 using (var fixedStream = new FileStream(destFile, FileMode.Create, FileAccess.Write, FileShare.None))
                 {
                     fixedStream.SetLength(Parser.Length);
@@ -108,16 +222,42 @@ namespace EBMLViewer
                 }
                 // close source and overwrite original
                 CloseSource();
-                File.Delete(sourceFile);
-                File.Move(destFile, sourceFile);
+                if (destIsSource)
+                {
+                    var origTemp = Path.Combine(dir, Guid.NewGuid().ToString());
+                    File.Move(sourceFile, origTemp);
+                    var succ = false;
+                    var retries = 5;
+                    while (retries > 0)
+                    {
+                        try
+                        {
+                            File.Move(destFile, sourceFile);
+                            succ = true;
+                            break;
+                        }
+                        catch (Exception ex)
+                        {
+                            retries -= 1;
+                            Thread.Sleep(250);
+                        }
+                    }
+                    if (!succ)
+                    {
+                        File.Move(origTemp, sourceFile);
+                        MessageBox.Show($"Save file failed.", "Save Failed", MessageBoxButtons.OK);
+                    }
+                    else
+                    {
+                        File.Delete(origTemp);
+                    }
+                }
+                LoadFile(destFileOrig);
             }
             catch (Exception ex)
             {
                 MessageBox.Show(ex.Message, "Failed to save file");
-                return;
             }
-            // reload source
-            LoadFile(sourceFile);
         }
 
         void AddDurationElement()
@@ -144,6 +284,7 @@ namespace EBMLViewer
             SourceFile = sourceFile;
             var sourceFilename = Path.GetFileName(SourceFile);
             closeToolStripMenuItem.Enabled = true;
+            saveAsToolStripMenuItem.Enabled = true;
             try
             {
                 fileStream = new FileStream(sourceFile, FileMode.Open, FileAccess.Read, FileShare.Read);
@@ -179,12 +320,15 @@ namespace EBMLViewer
             addDurationToolStripMenuItem.Enabled = Parser != null && Parser.Duration == null;
         }
 
-        void PopulateNode(TreeNode parentNode, bool expandAll = false)
+        void PopulateNode(TreeNode parentNode, bool expandAll = false, bool forceRefrash = false)
         {
-            var isLoadingReady = parentNode.Nodes.Count == 1 && (parentNode.Nodes[0].Text == loadingReadyText);
-            if (!isLoadingReady)
+            if (!forceRefrash)
             {
-                return;
+                var isLoadingReady = parentNode.Nodes.Count == 1 && (parentNode.Nodes[0].Text == loadingReadyText);
+                if (!isLoadingReady)
+                {
+                    return;
+                }
             }
             parentNode.Nodes[0].Text = loadingText;
             TaskRun(() =>
@@ -289,6 +433,33 @@ namespace EBMLViewer
         private void addDurationToolStripMenuItem_Click(object sender, EventArgs e)
         {
             AddDurationElement();
+        }
+
+        private void saveAsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            SaveAsChanges();
+        }
+
+        ContextMenuStrip baseElementContextMenu = new ContextMenuStrip();
+        private void treeView1_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right)
+            {
+                treeView1.SelectedNode = e.Node;
+                var element = (BaseElement?)e.Node.Tag;
+                if (element != null)
+                {
+                    if (element is TrackEntryElement trackEntryElement)
+                    {
+                        e.Node.ContextMenuStrip = baseElementContextMenu;
+                    }
+                    else
+                    {
+                        e.Node.ContextMenuStrip = baseElementContextMenu;
+                    }
+                }
+            }
+
         }
     }
 }

@@ -1,4 +1,6 @@
-﻿namespace SpawnDev.EBML
+﻿using System.Drawing;
+
+namespace SpawnDev.EBML
 {
     public class ByteSegment : SegmentSource<byte[]>
     {

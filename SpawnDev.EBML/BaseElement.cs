@@ -106,7 +106,11 @@
         /// <returns></returns>
         public virtual long CopyTo(Stream stream, int? bufferSize = null)
         {
-            if (Stream == null) return 0;
+            if (Stream == null)
+            {
+                return 0;
+            }
+            var pos = stream.Position;
             Stream.Position = 0;
             if (bufferSize != null)
             {
@@ -115,6 +119,11 @@
             else
             {
                 Stream.CopyTo(stream);
+            }
+            var bytesWritten = stream.Position - pos;
+            if (bytesWritten != Length || bytesWritten == 0)
+            {
+                var nmt = true;
             }
             return Length;
         }

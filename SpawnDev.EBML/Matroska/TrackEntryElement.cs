@@ -16,13 +16,14 @@
         public TrackEntryElement(Enum id) : base(id)
         {
         }
-        public byte TrackNumber
+        public ulong TrackNumber
         {
-            get => (byte)(ulong)GetElement<UintElement>(MatroskaId.TrackNumber);
+            get => (ulong)GetElement<UintElement>(MatroskaId.TrackNumber);
+            set => GetElement<UintElement>(MatroskaId.TrackNumber)!.Data = value;
         }
-        public byte TrackUID
+        public ulong TrackUID
         {
-            get => (byte)(ulong)GetElement<UintElement>(MatroskaId.TrackUID);
+            get => (ulong)GetElement<UintElement>(MatroskaId.TrackUID);
         }
         public TrackType TrackType
         {

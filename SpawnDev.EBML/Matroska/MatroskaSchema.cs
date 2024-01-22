@@ -101,7 +101,7 @@
             { MatroskaId.PrevSize, typeof(UintElement) },
             { MatroskaId.SimpleBlock, typeof(SimpleBlockElement) },
             { MatroskaId.BlockGroup, typeof(MasterElement) },
-            { MatroskaId.Block, typeof(BinaryElement) },
+            { MatroskaId.Block, typeof(BlockElement) },
             { MatroskaId.BlockVirtual, typeof(BinaryElement) },
             { MatroskaId.BlockAdditions, typeof(MasterElement) },
             { MatroskaId.BlockMore, typeof(MasterElement) },

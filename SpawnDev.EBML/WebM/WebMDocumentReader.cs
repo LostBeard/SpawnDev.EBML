@@ -148,6 +148,8 @@ namespace SpawnDev.EBML.WebM
                 return bitDepth != null ? (uint)bitDepth : null;
             }
         }
+
+        public List<TrackEntryElement> Tracks => GetElements<TrackEntryElement>(MatroskaId.Segment, MatroskaId.Tracks, MatroskaId.TrackEntry).ToList();
         /// <summary>
         /// Returns a list of video TrackEntryElements
         /// </summary>

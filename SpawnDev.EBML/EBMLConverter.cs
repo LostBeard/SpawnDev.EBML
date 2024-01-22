@@ -9,7 +9,16 @@ namespace SpawnDev.EBML
             int bytes;
             ulong flag;
             for (bytes = 1, flag = 0x80; x >= flag && bytes < 8; bytes++, flag *= 0x80) { }
-            bytes = Math.Max(minOctets, bytes);
+            if (IsUnknownSizeVINT(x, bytes))
+            {
+                bytes += 1;
+                flag *= 0x80;
+            }
+            while(bytes < minOctets)
+            {
+                bytes += 1;
+                flag *= 0x80;
+            }
             var ret = new byte[bytes];
             var value = flag + x;
             for (var i = bytes - 1; i >= 0; i--)
@@ -25,19 +34,21 @@ namespace SpawnDev.EBML
             int bytes;
             ulong flag;
             for (bytes = 1, flag = 0x80; x >= flag && bytes < 8; bytes++, flag *= 0x80) { }
+            if (IsUnknownSizeVINT(x, bytes))
+            {
+                bytes += 1;
+            }
             bytes = Math.Max(minOctets, bytes);
             return bytes;
         }
         public static byte[] ToUIntBytes(ulong value, int minOctets = 0)
         {
-            // check (optimize)
             var bytes = BigEndian.GetBytes(value).ToList();
             while (bytes.Count > 1 && bytes[0] == 0 && (minOctets <= 0 || bytes.Count > minOctets)) bytes.RemoveAt(0);
             return bytes.ToArray();
         }
         public static byte[] ToIntBytes(long value, int minOctets = 0)
         {
-            // check (optimize)
             var bytes = BigEndian.GetBytes(value).ToList();
             while (bytes.Count > 1 && bytes[0] == 0 && (minOctets <= 0 || bytes.Count > minOctets)) bytes.RemoveAt(0);
             return bytes.ToArray();

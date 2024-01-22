@@ -63,20 +63,28 @@ namespace SpawnDev.EBML
             }
         }
 
-        long _Length = 0;
+        //long _Length = 0;
         /// <summary>
         /// Returns the byte length of this container
         /// </summary>
-        public override long Length => _Length;
+        public override long Length => !DataChanged && Stream != null ? Stream.Length : CalculateLength();
         private long CalculateLength()
         {
             long ret = 0;
             foreach (var element in Data)
             {
                 var len = element.Length;
+                if (len == 0)
+                {
+                    var nmt1 = true;
+                }
                 ret += len;
                 var idSize = EBMLConverter.ToVINTByteSize(element.Id.ToUInt64());
                 var lenSize = EBMLConverter.ToVINTByteSize((ulong)len);
+                if (lenSize == 0)
+                {
+                    var nmt = true;
+                }
                 ret += idSize;
                 ret += lenSize;
             }
@@ -92,6 +100,7 @@ namespace SpawnDev.EBML
         {
             if (!DataChanged && Stream != null)
             {
+                var pos = stream.Position;
                 Stream.Position = 0;
                 if (bufferSize != null)
                 {
@@ -101,25 +110,41 @@ namespace SpawnDev.EBML
                 {
                     Stream.CopyTo(stream);
                 }
+                var bytesWritten = stream.Position - pos;
+                if (bytesWritten != Length)
+                {
+                    var nmt = true;
+                }
                 return Length;
             }
             else
             {
+                var pos = stream.Position;
+                if (Stream != null) Stream.Position = 0;
                 foreach (var element in Data)
                 {
                     var len = element.Length;
-                    var idBytes = EBMLConverter.ToVINTBytes(element.Id.ToUInt64());// GetElementIdBytes(element.Id);
+                    if (len == 127)
+                    {
+                        var nmt = true;
+                    }
+                    var idBytes = EBMLConverter.ToVINTBytes(element.Id.ToUInt64());
                     var lenBytes = EBMLConverter.ToVINTBytes((ulong)len);
                     stream.Write(idBytes);
                     stream.Write(lenBytes);
                     element.CopyTo(stream, bufferSize);
+                }
+                var bytesWritten = stream.Position - pos;
+                if (bytesWritten != Length)
+                {
+                    var nmt = true;
                 }
                 return Length;
             }
         }
         public override void UpdateByData()
         {
-            _Length = CalculateLength();
+            //_Length = CalculateLength();
             DataChangedInvoke();
         }
 
@@ -140,7 +165,7 @@ namespace SpawnDev.EBML
         {
             ReleaseData();
             ParseError = null;
-            _Length = Stream!.Length;
+            //_Length = Stream!.Length;
             ___Data = new Lazy<List<BaseElement>>(() => GetChildrenFromStream());
         }
         public virtual EBMLSchema ActiveSchema

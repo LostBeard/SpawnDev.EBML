@@ -1,17 +1,10 @@
 ﻿
 namespace SpawnDev.EBML.Matroska
 {
-    public enum SimpleBlockLacing : byte
-    {
-        None = 0,
-        Xiph,
-        Fixed,
-        EBML,
-    }
-    public class SimpleBlockElement : BinaryElement
+    public class BlockElement : BinaryElement
     {
         SegmentSource? SimpleBlockData = null;
-        public SimpleBlockElement(Enum id) : base(id)
+        public BlockElement(Enum id) : base(id)
         {
 
         }
@@ -45,22 +38,22 @@ namespace SpawnDev.EBML.Matroska
                 UpdateByData();
             }
         }
-        public bool Keyframe
-        {
-            get => (SimpleBlocksFlags & 128) != 0;
-        }
-        public bool Invisible
-        {
-            get => (SimpleBlocksFlags & 8) != 0;
-        }
-        public bool Discardable
-        {
-            get => (SimpleBlocksFlags & 1) != 0;
-        }
-        public SimpleBlockLacing Lacing
-        {
-            get => (SimpleBlockLacing)((SimpleBlocksFlags >> 1) & 3);
-        }
+        //public bool Keyframe
+        //{
+        //    get => (SimpleBlocksFlags & 128) != 0;
+        //}
+        //public bool Invisible
+        //{
+        //    get => (SimpleBlocksFlags & 8) != 0;
+        //}
+        //public bool Discardable
+        //{
+        //    get => (SimpleBlocksFlags & 1) != 0;
+        //}
+        //public SimpleBlockLacing Lacing
+        //{
+        //    get => (SimpleBlockLacing)((SimpleBlocksFlags >> 1) & 3);
+        //}
         public override long Length
         {
             get
@@ -110,6 +103,6 @@ namespace SpawnDev.EBML.Matroska
             _SimpleBlocksFlags = Stream.ReadByteOrThrow();
             SimpleBlockData = Stream.Slice(Stream.Length - Stream!.Position);
         }
-        public override string ToString() => $"{Index} {Id} - IdChain: [ {IdChain.ToString(", ")} ] Type: {GetType().Name} Length: {Length} bytes TrackId: {TrackId} Timecode: {Timecode} Keyframe: {Keyframe}";
+        public override string ToString() => $"{Index} {Id} - IdChain: [ {IdChain.ToString(", ")} ] Type: {GetType().Name} Length: {Length} bytes TrackId: {TrackId} Timecode: {Timecode}";
     }
 }

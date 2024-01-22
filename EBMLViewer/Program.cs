@@ -1,3 +1,5 @@
+using SpawnDev.EBML;
+
 namespace EBMLViewer
 {
     internal static class Program
