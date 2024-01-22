@@ -63,6 +63,7 @@ namespace EBMLViewer
                         }
                         else if (block.TrackId == trackId)
                         {
+                            // Remove the entire BlockGroup
                             block.Parent!.Remove();
                         }
                     }
