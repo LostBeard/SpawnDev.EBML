@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-
-namespace SpawnDev.EBML.Matroska
+﻿namespace SpawnDev.EBML.Matroska
 {
     public class MatroskaSchema : EBMLSchema<MatroskaId>
     {
