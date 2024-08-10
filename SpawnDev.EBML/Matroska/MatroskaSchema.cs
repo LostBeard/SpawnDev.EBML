@@ -1,4 +1,8 @@
-﻿namespace SpawnDev.EBML.Matroska
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace SpawnDev.EBML.Matroska
 {
     public class MatroskaSchema : EBMLSchema<MatroskaId>
     {
@@ -77,11 +81,11 @@
             { MatroskaId.SeekPosition, typeof(UintElement) },
             { MatroskaId.Info, typeof(MasterElement) },
             { MatroskaId.SegmentUID, typeof(BinaryElement) },
-            { MatroskaId.SegmentFilename, typeof(StringElement) },
+            { MatroskaId.SegmentFilename, typeof(UTF8StringElement) },
             { MatroskaId.PrevUID, typeof(BinaryElement) },
-            { MatroskaId.PrevFilename, typeof(StringElement) },
+            { MatroskaId.PrevFilename, typeof(UTF8StringElement) },
             { MatroskaId.NextUID, typeof(BinaryElement) },
-            { MatroskaId.NextFilename, typeof(StringElement) },
+            { MatroskaId.NextFilename, typeof(UTF8StringElement) },
             { MatroskaId.SegmentFamily, typeof(BinaryElement) },
             { MatroskaId.ChapterTranslate, typeof(MasterElement) },
             { MatroskaId.ChapterTranslateEditionUID, typeof(UintElement) },
@@ -90,9 +94,9 @@
             { MatroskaId.TimecodeScale, typeof(UintElement) },
             { MatroskaId.Duration, typeof(FloatElement) },
             { MatroskaId.DateUTC, typeof(DateElement) },
-            { MatroskaId.Title, typeof(StringElement) },
-            { MatroskaId.MuxingApp, typeof(StringElement) },
-            { MatroskaId.WritingApp, typeof(StringElement) },
+            { MatroskaId.Title, typeof(UTF8StringElement) },
+            { MatroskaId.MuxingApp, typeof(UTF8StringElement) },
+            { MatroskaId.WritingApp, typeof(UTF8StringElement) },
             { MatroskaId.Cluster, typeof(MasterElement) },
             { MatroskaId.Timecode, typeof(UintElement) },
             { MatroskaId.SilentTracks, typeof(MasterElement) },
@@ -140,13 +144,13 @@
             { MatroskaId.TrackTimecodeScale, typeof(FloatElement) },
             { MatroskaId.TrackOffset, typeof(IntElement) },
             { MatroskaId.MaxBlockAdditionID, typeof(UintElement) },
-            { MatroskaId.Name, typeof(StringElement) },
+            { MatroskaId.Name, typeof(UTF8StringElement) },
             { MatroskaId.Language, typeof(StringElement) },
             { MatroskaId.CodecID, typeof(StringElement) },
             { MatroskaId.CodecPrivate, typeof(BinaryElement) },
-            { MatroskaId.CodecName, typeof(StringElement) },
+            { MatroskaId.CodecName, typeof(UTF8StringElement) },
             { MatroskaId.AttachmentLink, typeof(UintElement) },
-            { MatroskaId.CodecSettings, typeof(StringElement) },
+            { MatroskaId.CodecSettings, typeof(UTF8StringElement) },
             { MatroskaId.CodecInfoURL, typeof(StringElement) },
             { MatroskaId.CodecDownloadURL, typeof(StringElement) },
             { MatroskaId.CodecDecodeAll, typeof(UintElement) },
@@ -225,8 +229,8 @@
             { MatroskaId.CueRefCodecState, typeof(UintElement) },
             { MatroskaId.Attachments, typeof(MasterElement) },
             { MatroskaId.AttachedFile, typeof(MasterElement) },
-            { MatroskaId.FileDescription, typeof(StringElement) },
-            { MatroskaId.FileName, typeof(StringElement) },
+            { MatroskaId.FileDescription, typeof(UTF8StringElement) },
+            { MatroskaId.FileName, typeof(UTF8StringElement) },
             { MatroskaId.FileMimeType, typeof(StringElement) },
             { MatroskaId.FileData, typeof(BinaryElement) },
             { MatroskaId.FileUID, typeof(UintElement) },
@@ -241,7 +245,7 @@
             { MatroskaId.EditionFlagOrdered, typeof(UintElement) },
             { MatroskaId.ChapterAtom, typeof(MasterElement) },
             { MatroskaId.ChapterUID, typeof(UintElement) },
-            { MatroskaId.ChapterStringUID, typeof(StringElement) },
+            { MatroskaId.ChapterStringUID, typeof(UTF8StringElement) },
             { MatroskaId.ChapterTimeStart, typeof(UintElement) },
             { MatroskaId.ChapterTimeEnd, typeof(UintElement) },
             { MatroskaId.ChapterFlagHidden, typeof(UintElement) },
@@ -252,7 +256,7 @@
             { MatroskaId.ChapterTrack, typeof(MasterElement) },
             { MatroskaId.ChapterTrackNumber, typeof(UintElement) },
             { MatroskaId.ChapterDisplay, typeof(MasterElement) },
-            { MatroskaId.ChapString, typeof(StringElement) },
+            { MatroskaId.ChapString, typeof(UTF8StringElement) },
             { MatroskaId.ChapLanguage, typeof(StringElement) },
             { MatroskaId.ChapCountry, typeof(StringElement) },
             { MatroskaId.ChapProcess, typeof(MasterElement) },
@@ -271,10 +275,10 @@
             { MatroskaId.TagChapterUID, typeof(UintElement) },
             { MatroskaId.TagAttachmentUID, typeof(UintElement) },
             { MatroskaId.SimpleTag, typeof(MasterElement) },
-            { MatroskaId.TagName, typeof(StringElement) },
+            { MatroskaId.TagName, typeof(UTF8StringElement) },
             { MatroskaId.TagLanguage, typeof(StringElement) },
             { MatroskaId.TagDefault, typeof(UintElement) },
-            { MatroskaId.TagString, typeof(StringElement) },
+            { MatroskaId.TagString, typeof(UTF8StringElement) },
             { MatroskaId.TagBinary, typeof(BinaryElement) },
         };
     }
