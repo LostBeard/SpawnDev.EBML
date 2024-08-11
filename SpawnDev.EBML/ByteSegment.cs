@@ -5,15 +5,18 @@ namespace SpawnDev.EBML
     public class ByteSegment : SegmentSource<byte[]>
     {
         #region Constructors
-        public ByteSegment(byte[] source, long offset, long size, bool ownsSource = false) : base(source, offset, size, ownsSource)
-        {
-        }
-        public ByteSegment(byte[] source, long size, bool ownsSource = false) : base(source, 0, size, ownsSource)
-        {
-        }
-        public ByteSegment(byte[] source, bool ownsSource = false) : base(source, 0, source.Length, ownsSource)
-        {
-        }
+        /// <summary>
+        /// Creates a new ByteSegment
+        /// </summary>
+        public ByteSegment(byte[] source, long offset, long size, bool ownsSource = false) : base(source, offset, size, ownsSource) { }
+        /// <summary>
+        /// Creates a new ByteSegment
+        /// </summary>
+        public ByteSegment(byte[] source, long size, bool ownsSource = false) : base(source, 0, size, ownsSource) { }
+        /// <summary>
+        /// Creates a new ByteSegment
+        /// </summary>
+        public ByteSegment(byte[] source, bool ownsSource = false) : base(source, 0, source.Length, ownsSource) { }
         #endregion
         public override int Read(byte[] buffer, int offset, int count)
         {
