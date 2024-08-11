@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.9.34407.89
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpawnDev.EBML", "SpawnDev.EBML\SpawnDev.EBML.csproj", "{CCDBEDFE-2A94-4BA4-8E02-EEA5526CF798}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SpawnDev.EBML", "SpawnDev.EBML\SpawnDev.EBML.csproj", "{CCDBEDFE-2A94-4BA4-8E02-EEA5526CF798}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EBMLViewer", "EBMLViewer\EBMLViewer.csproj", "{A3A8363D-D866-4A98-A83D-4998CD195EB9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EBMLViewer", "EBMLViewer\EBMLViewer.csproj", "{A3A8363D-D866-4A98-A83D-4998CD195EB9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
