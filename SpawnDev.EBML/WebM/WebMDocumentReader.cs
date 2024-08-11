@@ -1,5 +1,4 @@
 ﻿using SpawnDev.EBML.Matroska;
-using System.Diagnostics.Metrics;
 
 namespace SpawnDev.EBML.WebM
 {
