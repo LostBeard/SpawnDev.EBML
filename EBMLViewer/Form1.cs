@@ -397,7 +397,7 @@ namespace EBMLViewer
                 Title = "Open EBML file",
                 CheckFileExists = true,
                 CheckPathExists = true,
-                Filter = "EBML sources (*.webm;*.mkv)|*.webm;*.mkv|All files (*.*)|*.*",
+                Filter = "EBML sources (*.webm;*.mkv;*.mka)|*.webm;*.mkv;*.mka|All files (*.*)|*.*",
                 RestoreDirectory = true,
                 ReadOnlyChecked = true,
                 ShowReadOnly = true
