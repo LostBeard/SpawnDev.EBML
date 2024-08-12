@@ -128,6 +128,35 @@
             return Length;
         }
         /// <summary>
+        /// Copies the element to a stream
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <param name="bufferSize"></param>
+        /// <returns></returns>
+        public virtual async Task<long> CopyToAsync(Stream stream, int? bufferSize = null)
+        {
+            if (Stream == null)
+            {
+                return 0;
+            }
+            var pos = stream.Position;
+            Stream.Position = 0;
+            if (bufferSize != null)
+            {
+                await Stream.CopyToAsync(stream, bufferSize.Value);
+            }
+            else
+            {
+                await Stream.CopyToAsync(stream);
+            }
+            var bytesWritten = stream.Position - pos;
+            if (bytesWritten != Length || bytesWritten == 0)
+            {
+                var nmt = true;
+            }
+            return Length;
+        }
+        /// <summary>
         /// Should be overridden and internally update WebMBase.Data when called.<br />
         /// </summary>
         public virtual void UpdateBySource()
