@@ -142,6 +142,58 @@ namespace SpawnDev.EBML
                 return Length;
             }
         }
+        /// <summary>
+        /// Copies the container to the specified stream
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <param name="bufferSize"></param>
+        /// <returns></returns>
+        public override async Task<long> CopyToAsync(Stream stream, int? bufferSize = null)
+        {
+            if (!DataChanged && Stream != null)
+            {
+                var pos = stream.Position;
+                Stream.Position = 0;
+                if (bufferSize != null)
+                {
+                    await Stream.CopyToAsync(stream, bufferSize.Value);
+                }
+                else
+                {
+                    await Stream.CopyToAsync(stream);
+                }
+                var bytesWritten = stream.Position - pos;
+                if (bytesWritten != Length)
+                {
+                    var nmt = true;
+                }
+                return Length;
+            }
+            else
+            {
+                var pos = stream.Position;
+                if (Stream != null) Stream.Position = 0;
+                foreach (var element in Data)
+                {
+                    var len = element.Length;
+                    if (len == 127)
+                    {
+                        var nmt = true;
+                    }
+                    var idBytes = EBMLConverter.ToVINTBytes(element.Id.ToUInt64());
+                    var lenBytes = EBMLConverter.ToVINTBytes((ulong)len);
+                    await stream.WriteAsync(idBytes);
+                    await stream.WriteAsync(lenBytes);
+                    await element.CopyToAsync(stream, bufferSize);
+                }
+                var bytesWritten = stream.Position - pos;
+                if (bytesWritten != Length)
+                {
+                    var nmt = true;
+                }
+                return Length;
+            }
+        }
         public override void UpdateByData()
         {
             //_Length = CalculateLength();
