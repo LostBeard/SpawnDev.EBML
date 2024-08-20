@@ -3,14 +3,14 @@ using SpawnDev.EBML.Segments;
 
 namespace SpawnDev.EBML.Elements
 {
-    public enum Source
+    /// <summary>
+    /// base EBML element
+    /// </summary>
+    public abstract class BaseElement
     {
-        None,
-        SegmentSource,
-        Data,
-    }
-    public class BaseElement
-    {
+        /// <summary>
+        /// The byte offset from the document root
+        /// </summary>
         public long Offset
         {
             get
@@ -30,18 +30,55 @@ namespace SpawnDev.EBML.Elements
                 return offset;
             }
         }
-        public virtual Source Source { get; protected set; }
+        /// <summary>
+        /// Returns the source type location of the current Data
+        /// </summary>
+        public ElementDataSource Source { get; protected set; }
+        /// <summary>
+        /// Element index in its container
+        /// </summary>
         public int Index => Parent == null ? -1 : Parent.GetChildIndex(this);
+        /// <summary>
+        /// Schema element type:<br/>
+        /// - uinteger<br/>
+        /// - integer<br/>
+        /// - master<br/>
+        /// - float<br/>
+        /// - string<br/>
+        /// - utf-8<br/>
+        /// - binary<br/>
+        /// - date<br/>
+        /// </summary>
         public virtual string Type => SchemaElement?.Type ?? "";
+        /// <summary>
+        /// Element data as a string
+        /// </summary>
         public virtual string DataString { get; set; } = "";
-        public virtual string DocType => SchemaElement?.DocType ?? Parent?.DocType ?? EBMLSchemaSet.EBML;
+        /// <summary>
+        /// Element DocType
+        /// </summary>
+        public virtual string? DocType => SchemaElement?.DocType ?? Parent?.DocType ?? EBMLSchemaSet.EBML;
+        /// <summary>
+        /// Element parent
+        /// </summary>
         public virtual MasterElement? Parent { get; private set; }
-        internal virtual void SetParent(MasterElement? parent)
+        /// <summary>
+        /// Adds this element to the parent element
+        /// </summary>
+        /// <param name="parent"></param>
+        public virtual void SetParent(MasterElement? parent)
         {
             if (Parent == parent) return;
             if (Parent != null) Remove();
             Parent = parent;
+            if (parent != null)
+            {
+                parent.AddElement(this);
+            }
         }
+        /// <summary>
+        /// Remove the element from its parent
+        /// </summary>
         public void Remove()
         {
             if (Parent == null) return;
@@ -52,7 +89,7 @@ namespace SpawnDev.EBML.Elements
         /// <summary>
         /// Returns true if this element requires a parent and does not have one
         /// </summary>
-        public bool IsOrphan => ElementHeaderRequired && Parent == null;
+        public bool IsOrphan => !IsDocument && Parent == null;
         /// <summary>
         /// Returns true if the Depth == 0 and not an orphan
         /// </summary>
@@ -61,37 +98,79 @@ namespace SpawnDev.EBML.Elements
         /// Returns true if the Depth == 1 and not an orphan
         /// </summary>
         public bool PathIsTopLevel => !IsOrphan && Depth == 0;
+        /// <summary>
+        /// Element depth<br/>
+        /// - Document or orphan = -1<br/>
+        /// - Root elements = 0<br/>
+        /// - Top level = 1<br/>
+        /// </summary>
         public int Depth => Path.Split('\\', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Length - 1;
+        /// <summary>
+        /// Element name
+        /// </summary>
         public string? Name => SchemaElement?.Name ?? (Id == 0 ? "" : $"{Id}");
+        /// <summary>
+        /// Element header size + element data size
+        /// </summary>
         public ulong TotalSize => DataSize + HeaderSize;
+        /// <summary>
+        /// Header size
+        /// </summary>
         public ulong HeaderSize => ElementHeader == null ? 0 : (ulong)ElementHeader.HeaderSize;
+        /// <summary>
+        /// Data size
+        /// </summary>
         public virtual ulong DataSize => (ulong)SegmentSource.Length;
-        public virtual bool ElementHeaderRequired { get; } = true;
+        /// <summary>
+        /// Returns true if this element is an EBMLDocument
+        /// </summary>
+        public virtual bool IsDocument { get; } = false;
+        /// <summary>
+        /// Element Id
+        /// </summary>
         public ulong Id { get; protected set; }
+        /// <summary>
+        /// Element Id as hex string
+        /// </summary>
         public string IdHex => $"0x{Convert.ToHexString(EBMLConverter.ToUIntBytes(Id))}";
-        protected virtual ElementHeader? _ElementHeader { get; set; }
+        protected ElementHeader? _ElementHeader { get; set; }
         public ElementHeader? ElementHeader
         {
             get
             {
-                if (_ElementHeader == null && ElementHeaderRequired) _ElementHeader = new ElementHeader(Id, DataSize);
+                if (_ElementHeader == null && !IsDocument) _ElementHeader = new ElementHeader(Id, DataSize);
                 return _ElementHeader;
             }
-            set => _ElementHeader = ElementHeaderRequired ? value : null;
+            set => _ElementHeader = !IsDocument ? value : null;
         }
+        /// <summary>
+        /// The schema element info for this element
+        /// </summary>
         public EBMLSchemaElement? SchemaElement { get; set; }
+        /// <summary>
+        /// Returns true if the element has been modified
+        /// </summary>
         public bool Modified { get; set; }
+        /// <summary>
+        /// Element path
+        /// </summary>
         public virtual string Path => Parent == null ? $@"\{Name}" : $@"{Parent.Path.TrimEnd('\\')}\{Name}";
-        protected virtual SegmentSource? _SegmentSource { get; set; } = null;
+        /// <summary>
+        /// protected SegmentSource
+        /// </summary>
+        protected SegmentSource? _SegmentSource = null;
+        /// <summary>
+        /// SegmentSource
+        /// </summary>
         public virtual SegmentSource SegmentSource
         {
             get
             {
                 if (_SegmentSource == null)
                 {
-                    _SegmentSource = DataToSegmentSource();
+                    DataToSegmentSource(ref _SegmentSource);
                 }
-                return _SegmentSource;
+                return _SegmentSource!;
             }
             set
             {
@@ -100,7 +179,7 @@ namespace SpawnDev.EBML.Elements
                 StreamChanged();
             }
         }
-        public MasterElement? GetRootLevelElement()
+        private MasterElement? GetRootLevelElement()
         {
             MasterElement? ret = Parent;
             while (ret?.Parent != null)
@@ -109,10 +188,14 @@ namespace SpawnDev.EBML.Elements
             }
             return ret;
         }
-        public EBMLDocument? GetDocumentElement()
-        {
-            return GetRootLevelElement() as EBMLDocument;
-        }
+        /// <summary>
+        /// Returns the EBMLDocument this element belongs to or null
+        /// </summary>
+        /// <returns></returns>
+        public EBMLDocument? GetDocumentElement() => GetRootLevelElement() as EBMLDocument;
+        /// <summary>
+        /// Fired when the stream data has been set
+        /// </summary>
         protected virtual void StreamChanged() { }
         /// <summary>
         /// Constructor used by MasterElements when reading elements from its SegmentSource
@@ -122,7 +205,7 @@ namespace SpawnDev.EBML.Elements
             Id = id;
             SchemaElement = schemaElement;
             _SegmentSource = source;
-            if (_SegmentSource != null) Source = Source.SegmentSource;
+            if (_SegmentSource != null) Source = ElementDataSource.SegmentSource;
             ElementHeader = header;
         }
         /// <summary>
@@ -135,6 +218,10 @@ namespace SpawnDev.EBML.Elements
             SchemaElement = schemaElement;
             Id = id;
         }
+        /// <summary>
+        /// Copy to stream
+        /// </summary>
+        /// <param name="stream"></param>
         public virtual void CopyTo(Stream stream)
         {
             SegmentSource.Seek(0, SeekOrigin.Begin);
@@ -145,6 +232,9 @@ namespace SpawnDev.EBML.Elements
             SegmentSource.Position = 0;
             SegmentSource.CopyTo(stream);
         }
+        /// <summary>
+        /// Copy to stream
+        /// </summary>
         public virtual async Task CopyToAsync(Stream stream)
         {
             SegmentSource.Seek(0, SeekOrigin.Begin);
@@ -155,13 +245,30 @@ namespace SpawnDev.EBML.Elements
             SegmentSource.Position = 0;
             await SegmentSource.CopyToAsync(stream);
         }
-        protected virtual SegmentSource DataToSegmentSource() => throw new NotImplementedException();
+        /// <summary>
+        /// Creates a new SegmentSource from the current Data
+        /// </summary>
+        protected virtual void DataToSegmentSource(ref SegmentSource? segmentSource) => throw new NotImplementedException();
+        /// <summary>
+        /// Firs the OnChanged event
+        /// </summary>
         protected virtual void Changed() => OnChanged?.Invoke(this);
+        /// <summary>
+        /// Fired when the element data has changed
+        /// </summary>
         public event Action<BaseElement> OnChanged;
+        /// <summary>
+        /// Returns the element as a stream
+        /// </summary>
+        /// <returns></returns>
         public Stream ToStream()
         {
             return ElementHeader == null ? new MultiStreamSegment(new Stream[] { SegmentSource }) : new MultiStreamSegment(new Stream[] { ElementHeader.SegmentSource, SegmentSource });
         }
+        /// <summary>
+        /// Returns the element as a btye array
+        /// </summary>
+        /// <returns></returns>
         public byte[] ToBytes()
         {
             using var stream = ToStream();
@@ -170,61 +277,117 @@ namespace SpawnDev.EBML.Elements
             return output;
         }
     }
+    /// <summary>
+    /// base EBML element
+    /// </summary>
     public abstract class BaseElement<T> : BaseElement
     {
+        /// <summary>
+        /// Returns true if Data is being created from SegmentSource
+        /// </summary>
+        public bool ProcessingSegmentSource { get; set; }
+        /// <summary>
+        /// Returns the data as a string
+        /// </summary>
         public override string DataString
         {
             get => Data?.ToString() ?? "";
         }
-        protected virtual Lazy<T> _Data { get; set; }
-        protected virtual bool EqualCheck(T obj1, T obj2) => obj1?.Equals(obj2) ?? false;
+        private T _Data = default(T)!;
+        /// <summary>
+        /// Returns true if the _Data has been set
+        /// </summary>
+        protected bool _DataIsValueCreated { get; set; }
+        /// <summary>
+        /// Returns true is the new value equals the old value
+        /// </summary>
+        protected virtual bool EqualCheck(T obj1, T obj2) => object.Equals(obj1, obj2);
+        /// <summary>
+        /// Fired after Data is read from SegmentSource
+        /// </summary>
+        public event Action<BaseElement> OnSegmentSourceProcessed;
+        /// <summary>
+        /// The data this element holds
+        /// </summary>
         public virtual T Data
         {
-            get => _Data.Value;
+            get
+            {
+                if (!_DataIsValueCreated)
+                {
+                    _DataIsValueCreated = true;
+                    ProcessingSegmentSource = true;
+                    try
+                    {
+                        DataFromSegmentSource(ref _Data);
+                        OnSegmentSourceProcessed?.Invoke(this);
+                    }
+                    finally
+                    {
+                        ProcessingSegmentSource = false;
+                    }
+                }
+                return _Data;
+            }
             set
             {
-                if (_Data.IsValueCreated && EqualCheck(value, _Data.Value)) return;
-                _Data = new Lazy<T>(value);
+                if (_DataIsValueCreated && EqualCheck(value, _Data)) return;
+                _Data = value;
                 DataChanged();
             }
         }
+        /// <summary>
+        /// Creates new instance with data, and unknown EBMLSchemaElement
+        /// </summary>
         public BaseElement(EBMLSchemaElement schemaElement, T data) : base(schemaElement.Id, schemaElement)
         {
-            Source = Source.Data;
-            _Data = new Lazy<T>(data);
+            Source = ElementDataSource.Data;
+            _Data = data;
+            _DataIsValueCreated = true;
         }
         /// <summary>
         /// Creates new instance with data, and unknown EBMLSchemaElement
         /// </summary>
         public BaseElement(ulong id, T data) : base(id, null)
         {
-            Source = Source.Data;
-            _Data = new Lazy<T>(data);
+            Source = ElementDataSource.Data;
+            _Data = data;
+            _DataIsValueCreated = true;
         }
+        /// <summary>
+        /// Creates new instance from SegmentSource
+        /// </summary>
         public BaseElement(EBMLSchemaElement? schemaElement, SegmentSource source, ElementHeader? header) : base(schemaElement?.Id ?? header?.Id ?? 0, schemaElement, source, header)
         {
-            Source = Source.SegmentSource;
-            _Data = new Lazy<T>(() => DataFromSegmentSource());
+            // from SegmentSource
         }
         /// <summary>
         /// This method must must convert SegmentSource and to type T<br/>
         /// Starts at 0 and is the full size of the SegmentSource unless unknown size
         /// </summary>
-        protected abstract T DataFromSegmentSource();
+        protected abstract void DataFromSegmentSource(ref T data);
+        /// <summary>
+        /// Fired when Data has been set
+        /// </summary>
         protected virtual void DataChanged()
         {
-            Source = Source.Data;
+            _DataIsValueCreated = true;
+            Source = ElementDataSource.Data;
             Modified = true;
             ElementHeader = null;
             _SegmentSource = null;
             Changed();
         }
+        /// <summary>
+        /// Fired when SegmentSource has been set
+        /// </summary>
         protected override void StreamChanged()
         {
-            Source = Source.SegmentSource;
+            _DataIsValueCreated = false;
+            Source = ElementDataSource.SegmentSource;
             Modified = true;
             ElementHeader = null;
-            _Data = new Lazy<T>(() => DataFromSegmentSource());
+            _Data = default(T)!;
             Changed();
         }
     }

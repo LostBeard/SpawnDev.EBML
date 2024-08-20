@@ -20,7 +20,7 @@ namespace SpawnDev.EBML.Elements
         public FloatElement(EBMLSchemaElement schemaElement, SegmentSource source, ElementHeader? header = null) : base(schemaElement, source, header) { }
         public FloatElement(EBMLSchemaElement schemaElement, double value) : base(schemaElement, value) { }
         public FloatElement(EBMLSchemaElement schemaElement) : base(schemaElement, default) { }
-        protected override double DataFromSegmentSource() => EBMLConverter.ReadEBMLFloat(SegmentSource.ReadBytes(0, SegmentSource.Length, true));
-        protected override SegmentSource DataToSegmentSource() => new ByteSegment(EBMLConverter.ToFloatBytes(Data));
+        protected override void DataFromSegmentSource(ref double data) => data = EBMLConverter.ReadEBMLFloat(SegmentSource.ReadBytes(0, SegmentSource.Length, true));
+        protected override void DataToSegmentSource(ref SegmentSource source) => source = new ByteSegment(EBMLConverter.ToFloatBytes(Data));
     }
 }

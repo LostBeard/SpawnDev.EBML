@@ -24,17 +24,17 @@ namespace SpawnDev.EBML.Elements
         public DateElement(EBMLSchemaElement schemaElement, SegmentSource source, ElementHeader? header = null) : base(schemaElement, source, header) { }
         public DateElement(EBMLSchemaElement schemaElement, DateTime value) : base(schemaElement, value) { }
         public DateElement(EBMLSchemaElement schemaElement) : base(schemaElement, default) { }
-        protected override DateTime DataFromSegmentSource()
+        protected override void DataFromSegmentSource(ref DateTime data)
         {
             SegmentSource!.Position = 0;
-            return SegmentSource!.ReadEBMLDate((int)SegmentSource!.Length);
+            data = SegmentSource!.ReadEBMLDate((int)SegmentSource!.Length);
         }
-        protected override SegmentSource DataToSegmentSource()
+        protected override void DataToSegmentSource(ref SegmentSource source)
         {
             var timeOffset = (long)((Data - DateTimeReferencePoint).TotalMilliseconds * TimeScale);
             var bytes = BitConverter.GetBytes(timeOffset).Reverse().ToList();
             while (bytes.Count > 1 && bytes[0] == 0) bytes.RemoveAt(0);
-            return new ByteSegment(bytes.ToArray());
+            source = new ByteSegment(bytes.ToArray());
         }
     }
 }

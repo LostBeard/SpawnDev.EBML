@@ -2,12 +2,14 @@
 using BlazorEBMLViewer.Layout;
 using BlazorEBMLViewer.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Radzen;
 using SpawnDev.BlazorJS;
 using SpawnDev.BlazorJS.JSObjects;
 using SpawnDev.BlazorJS.Toolbox;
 using SpawnDev.EBML;
 using SpawnDev.EBML.Elements;
+using File = SpawnDev.BlazorJS.JSObjects.File;
 
 namespace BlazorEBMLViewer.Pages
 {
@@ -27,6 +29,8 @@ namespace BlazorEBMLViewer.Pages
         EBMLSchemaService EBMLSchemaService { get; set; }
         [Inject]
         ContextMenuService ContextMenuService { get; set; }
+        [Inject]
+        DialogService DialogService { get; set; }
 
         EBMLDataGrid Grid { get; set; }
 
@@ -48,7 +52,7 @@ namespace BlazorEBMLViewer.Pages
             DocumentBusy = true;
             StateHasChanged();
             await Task.Delay(50);
-            Document = new EBMLDocument(filename, schema.DocType, EBMLSchemaService.SchemaSet);
+            Document = new EBMLDocument(schema.DocType, EBMLSchemaService.SchemaSet, filename);
             Document.OnChanged += Document_OnChanged;
             MainLayoutService.Title = Document.Filename;
             ActiveContainer = Document;
@@ -56,12 +60,10 @@ namespace BlazorEBMLViewer.Pages
             StateHasChanged();
             await SetPath(@"\\");
         }
-
         private void Document_OnChanged(BaseElement obj)
         {
             JS.Log("Document_OnChanged", obj.Depth, obj.Path);
         }
-
         protected override void OnInitialized()
         {
             //
@@ -69,23 +71,6 @@ namespace BlazorEBMLViewer.Pages
         public void Dispose()
         {
             //
-        }
-        private void UndoService_OnStateHasChanged()
-        {
-            StateHasChanged();
-        }
-        async Task _SetPath(string path)
-        {
-            DocumentBusy = true;
-            StateHasChanged();
-            await Task.Delay(50);
-            var element = Document?.GetContainer(path);
-            if (element is MasterElement source)
-            {
-                ActiveContainer = source;
-            }
-            DocumentBusy = false;
-            StateHasChanged();
         }
         List<string> History = new List<string>();
         async Task SetPath(string path)
@@ -172,7 +157,6 @@ namespace BlazorEBMLViewer.Pages
             }
             else if (args.Value is EBMLSchemaElement addable)
             {
-
                 ActiveContainer.AddElement(addable);
             }
         }
@@ -192,12 +176,19 @@ namespace BlazorEBMLViewer.Pages
                 DocumentSourceHandle.Dispose();
                 DocumentSourceHandle = null;
             }
-            //UndoService.Clear();
             StateHasChanged();
         }
         async Task ShowOpenFileDialogFallback()
         {
-            var result = await FilePicker.ShowOpenFilePicker(".ebml,.webm,.mkv,.mka,.mks");
+            File[] result;
+            try
+            {
+                result = await FilePicker.ShowOpenFilePicker(".ebml,.webm,.mkv,.mka,.mks");
+            }
+            catch
+            {
+                return;
+            }
             var file = result?.FirstOrDefault();
             if (file == null) return;
             CloseDocument();
@@ -206,16 +197,40 @@ namespace BlazorEBMLViewer.Pages
             await Task.Delay(50);
             var arrayBuffer = await file.ArrayBuffer();
             var fileStream = new ArrayBufferStream(arrayBuffer);
-            Document = new EBMLDocument(file.Name, fileStream, EBMLSchemaService.SchemaSet);
+            Document = new EBMLDocument(fileStream, EBMLSchemaService.SchemaSet, file.Name);
             MainLayoutService.Title = file.Name;
             ActiveContainer = Document;
             DocumentBusy = false;
             StateHasChanged();
             await SetPath(@"\\");
         }
+        async Task GridRowContextMenu(RowContextMenuArgs args)
+        {
+            var element = args.Element;
+            var options = new List<ContextMenuItem>();
+            options.Add(new ContextMenuItem
+            {
+                Text = "Delete",
+                Icon = "delete",
+                Value = async () =>
+                {
+                    var confirm = await DialogService.Confirm($"Delete {element.Name}?");
+                    if (confirm == true)
+                    {
+                        element.Remove();
+                    }
+                }
+            });
+            ContextMenuService.Open(args.MouseEventArgs, options, ContextMenuActionInvoker);
+        }
+        void ContextMenuActionInvoker(MenuItemEventArgs args)
+        {
+            if (args.Value is Action action) action();
+            else if (args.Value is Func<Task> asyncAction) _ = asyncAction();
+        }
         async Task ShowOpenFileDialog()
         {
-            if (JS.IsUndefined("window.showOpenFilePicker"))
+            if (true || JS.IsUndefined("window.showOpenFilePicker"))
             {
                 await ShowOpenFileDialogFallback();
                 return;
@@ -223,9 +238,10 @@ namespace BlazorEBMLViewer.Pages
             DocumentBusy = true;
             StateHasChanged();
             FileSystemFileHandle? file = null;
+            Array<FileSystemFileHandle> result;
             try
             {
-                using var result = await JS.WindowThis!.ShowOpenFilePicker(new ShowOpenFilePickerOptions
+                result = await JS.WindowThis!.ShowOpenFilePicker(new ShowOpenFilePickerOptions
                 {
                     Multiple = false,
                     Types = new List<ShowOpenFilePickerType>
@@ -238,14 +254,22 @@ namespace BlazorEBMLViewer.Pages
              }, Description = "EBML Files" }
             }
                 });
+            }
+            catch
+            {
+                return;
+            }
+            try
+            {
                 file = result.FirstOrDefault();
+                result.Dispose();
                 if (file == null) return;
                 CloseDocument();
                 DocumentSourceHandle = file;
                 using var f = await file.GetFile();
                 using var arrayBuffer = await f.ArrayBuffer();
                 var fileStream = new ArrayBufferStream(arrayBuffer);
-                Document = new EBMLDocument(file.Name, fileStream, EBMLSchemaService.SchemaSet);
+                Document = new EBMLDocument(fileStream, EBMLSchemaService.SchemaSet, file.Name);
                 MainLayoutService.Title = file.Name;
                 ActiveContainer = Document;
                 DocumentBusy = false;

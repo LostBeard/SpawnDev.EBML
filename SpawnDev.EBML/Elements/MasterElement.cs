@@ -1,17 +1,16 @@
 ﻿using SpawnDev.EBML.Crc32;
 using SpawnDev.EBML.Segments;
-using System.Xml.Linq;
 
 namespace SpawnDev.EBML.Elements
 {
     public class MasterElement : BaseElement<IEnumerable<BaseElement>>
     {
+        static Crc32Algorithm CRC = new Crc32Algorithm(false);
         public EBMLSchemaSet SchemaSet { get; }
         public const string TypeName = "master";
         public override string DataString => $"";
         public event Action<BaseElement> ElementFound;
         public event Action<BaseElement> ElementRemoved;
-        //public virtual ulong DataSize => CalculatedSize;
         public MasterElement(EBMLSchemaSet schemas, EBMLSchemaElement schemaElement, SegmentSource source, ElementHeader? header = null) : base(schemaElement, source, header)
         {
             SchemaSet = schemas;
@@ -156,30 +155,18 @@ namespace SpawnDev.EBML.Elements
             AddElement(element);
             return element;
         }
-        public TElement RemoveElement<TElement>(TElement element) where TElement : BaseElement
-        {
-            var data = (List<BaseElement>)Data;
-            if (!data.Contains(element)) return element;
-            data.Remove(element);
-            element.OnChanged -= Child_OnChanged;
-            element.SetParent(null);
-            ElementRemoved?.Invoke(element);
-            DataChanged();
-            return element;
-        }
         public TElement AddElement<TElement>(EBMLSchemaElement elementSchema) where TElement : BaseElement
         {
-            var element = SchemaSet.Create<TElement>(elementSchema);
+            var element = Create<TElement>(elementSchema);
             if (element == null) return null;
             return AddElement(element);
         }
         public BaseElement? AddElement(EBMLSchemaElement elementSchema)
         {
-            var element = SchemaSet.Create(elementSchema);
+            var element = Create(elementSchema);
             if (element == null) return null;
             return AddElement(element);
         }
-        static Crc32Algorithm CRC = new Crc32Algorithm(false);
         /// <summary>
         /// Updates the container's CRC-32 element if it has one
         /// </summary>
@@ -204,6 +191,17 @@ namespace SpawnDev.EBML.Elements
             var hash = CRC.ComputeHash(stream);
             return hash;
         }
+        public TElement RemoveElement<TElement>(TElement element) where TElement : BaseElement
+        {
+            var data = (List<BaseElement>)Data;
+            if (!data.Contains(element)) return element;
+            data.Remove(element);
+            element.OnChanged -= Child_OnChanged;
+            if (element.Parent == this) element.Remove();
+            ElementRemoved?.Invoke(element);
+            DataChanged();
+            return element;
+        }
         public TElement AddElement<TElement>(TElement element) where TElement : BaseElement
         {
             if (element == null)
@@ -214,15 +212,13 @@ namespace SpawnDev.EBML.Elements
             {
                 throw new ArgumentNullException(nameof(element.SchemaElement));
             }
-            element.SetParent(this);
-            element.OnChanged += Child_OnChanged;
-            if (element.Path == @"\EBML" && element is MasterElement ebmlMaster && this is EBMLDocument thisDoc)
-            {
-                var docType1 = ebmlMaster.ReadString("DocType");
-                if (!string.IsNullOrEmpty(docType1)) thisDoc._DocType = docType1;
-            }
-            var added = false;
             var data = (List<BaseElement>)Data;
+            if (data.Contains(element))
+            {
+                return element;
+            }
+            element.OnChanged += Child_OnChanged;
+            var added = false;
             if (element.SchemaElement.Position != null)
             {
                 if (element.SchemaElement.Position.Value == 0)
@@ -254,6 +250,7 @@ namespace SpawnDev.EBML.Elements
                 if (crc != null) binaryElement.Data = crc;
             }
             if (!added) data.Add(element);
+            if (element.Parent != this) element.SetParent(this);
             ElementFound?.Invoke(element);
             DataChanged();
             return element;
@@ -266,11 +263,6 @@ namespace SpawnDev.EBML.Elements
             }
             element.SetParent(this);
             element.OnChanged += Child_OnChanged;
-            if (element.Path == @"\EBML" && element is MasterElement ebmlMaster && this is EBMLDocument thisDoc)
-            {
-                var docType1 = ebmlMaster.ReadString("DocType");
-                if (!string.IsNullOrEmpty(docType1)) thisDoc._DocType = docType1;
-            }
             var data = (List<BaseElement>)Data;
             data.Insert(0, element);
             ElementFound?.Invoke(element);
@@ -363,13 +355,14 @@ namespace SpawnDev.EBML.Elements
         public IEnumerable<BaseElement> GetElements(string path) => GetElements<BaseElement>(path);
         public IEnumerable<MasterElement> GetContainers(string path) => GetElements<MasterElement>(path);
         public MasterElement? GetContainer(string path) => GetElements<MasterElement>(path).FirstOrDefault();
-        protected override IEnumerable<BaseElement> DataFromSegmentSource()
+        protected override void DataFromSegmentSource(ref IEnumerable<BaseElement> _data)
         {
             SegmentSource.Position = 0;
             var source = SegmentSource;
             var data = new List<BaseElement>();
-            //var rootElement = GetDocumentElement();
+            _data = data;
             var isUnknownSize = _ElementHeader != null && _ElementHeader.Size == null;
+            var parsingDocType = DocType ?? EBMLSchemaSet.EBML;
             while (true)
             {
                 BaseElement? ret = null;
@@ -389,7 +382,7 @@ namespace SpawnDev.EBML.Elements
                 }
                 var elementDataOffset = source.Position;
                 var id = elementHeader.Id;
-                var schemaElement = SchemaSet.GetEBMLSchemaElement(id, DocType);
+                var schemaElement = SchemaSet.GetEBMLSchemaElement(id, parsingDocType);
                 if (schemaElement == null)
                 {
                     var nmttt = true;
@@ -412,10 +405,11 @@ namespace SpawnDev.EBML.Elements
                 }
                 else
                 {
-                    ret = SchemaSet.Create(schemaElement, elementSegmentSource, elementHeader);
+                    ret = Create(schemaElement, elementSegmentSource, elementHeader);
                     if (ret == null)
                     {
-                        ret = new BaseElement(id, schemaElement, elementSegmentSource, elementHeader);
+                        ret = new BinaryElement(schemaElement, source, elementHeader);
+                        //ret = new BaseElement(id, schemaElement, elementSegmentSource, elementHeader);
                     }
                 }
                 if (ret == null)
@@ -429,8 +423,11 @@ namespace SpawnDev.EBML.Elements
                 {
                     if (ret is MasterElement ebmlMaster && this is EBMLDocument thisDoc)
                     {
-                        var docType1 = ebmlMaster.ReadString("DocType");
-                        if (!string.IsNullOrEmpty(docType1)) thisDoc._DocType = docType1;
+                        var newDocType = ebmlMaster.ReadString("DocType");
+                        if (!string.IsNullOrEmpty(newDocType))
+                        {
+                            parsingDocType = newDocType;
+                        }
                     }
                 }
                 ElementFound?.Invoke(ret);
@@ -448,11 +445,68 @@ namespace SpawnDev.EBML.Elements
                     _SegmentSource = SegmentSource.Slice(0, measuredSize);
                 }
             }
-            return data;
         }
-        protected override SegmentSource DataToSegmentSource()
+        private BaseElement? Create(EBMLSchemaElement? schemaElement, SegmentSource source, ElementHeader? header = null)
         {
-            return new MultiStreamSegment(Data.Select(o => o.ToStream()).ToArray());
+            if (schemaElement == null) return null;
+            var type = SchemaSet.GetElementType(schemaElement.Type);
+            if (type == null) return null;
+            BaseElement? ret = schemaElement.Type switch
+            {
+                MasterElement.TypeName => new MasterElement(SchemaSet, schemaElement, source, header),
+                UintElement.TypeName => new UintElement(schemaElement, source, header),
+                IntElement.TypeName => new IntElement(schemaElement, source, header),
+                FloatElement.TypeName => new FloatElement(schemaElement, source, header),
+                StringElement.TypeName => new StringElement(schemaElement, source, header),
+                UTF8Element.TypeName => new UTF8Element(schemaElement, source, header),
+                BinaryElement.TypeName => new BinaryElement(schemaElement, source, header),
+                DateElement.TypeName => new DateElement(schemaElement, source, header),
+                _ => null
+            };
+            return ret;
+        }
+        TElement? Create<TElement>(EBMLSchemaElement? schemaElement) where TElement : BaseElement
+        {
+            if (schemaElement == null) return null;
+            var type = SchemaSet.GetElementType(schemaElement.Type);
+            if (type == null) return null;
+            if (!typeof(TElement).IsAssignableFrom(type)) throw new Exception("Create type mismatch");
+            BaseElement? ret = schemaElement.Type switch
+            {
+                MasterElement.TypeName => new MasterElement(SchemaSet, schemaElement),
+                UintElement.TypeName => new UintElement(schemaElement),
+                IntElement.TypeName => new IntElement(schemaElement),
+                FloatElement.TypeName => new FloatElement(schemaElement),
+                StringElement.TypeName => new StringElement(schemaElement),
+                UTF8Element.TypeName => new UTF8Element(schemaElement),
+                BinaryElement.TypeName => new BinaryElement(schemaElement),
+                DateElement.TypeName => new DateElement(schemaElement),
+                _ => null
+            };
+            return (TElement?)ret;
+        }
+        BaseElement? Create(EBMLSchemaElement? schemaElement)
+        {
+            if (schemaElement == null) return null;
+            var type = SchemaSet.GetElementType(schemaElement.Type);
+            if (type == null) return null;
+            BaseElement? ret = schemaElement.Type switch
+            {
+                MasterElement.TypeName => new MasterElement(SchemaSet, schemaElement),
+                UintElement.TypeName => new UintElement(schemaElement),
+                IntElement.TypeName => new IntElement(schemaElement),
+                FloatElement.TypeName => new FloatElement(schemaElement),
+                StringElement.TypeName => new StringElement(schemaElement),
+                UTF8Element.TypeName => new UTF8Element(schemaElement),
+                BinaryElement.TypeName => new BinaryElement(schemaElement),
+                DateElement.TypeName => new DateElement(schemaElement),
+                _ => null
+            };
+            return ret;
+        }
+        protected override void DataToSegmentSource(ref SegmentSource source)
+        {
+            source = new MultiStreamSegment(Data.Select(o => o.ToStream()).ToArray());
         }
     }
 }

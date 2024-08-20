@@ -1,5 +1,6 @@
 ﻿using BlazorEBMLViewer.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Radzen;
 using Radzen.Blazor;
 using SpawnDev.BlazorJS;
@@ -40,6 +41,8 @@ namespace BlazorEBMLViewer.Components
         public EventCallback<BaseElement> Select { get; set; }
         [Parameter]
         public EventCallback<BaseElement> Deselect { get; set; }
+        [Parameter]
+        public EventCallback<RowContextMenuArgs> RowContextMenu { get; set; }
 
         async Task RowDoubleClick(DataGridRowMouseEventArgs<BaseElement> args)
         {
@@ -171,6 +174,10 @@ namespace BlazorEBMLViewer.Components
             if (Selected == null) return;
             await Deselect.InvokeAsync(element);
             Selected = null;
+        }
+        async Task ContextMenu(MouseEventArgs args, BaseElement element)
+        {
+            await RowContextMenu.InvokeAsync(new RowContextMenuArgs(args, element));
         }
         private async void Document_OnChanged(BaseElement obj)
         {

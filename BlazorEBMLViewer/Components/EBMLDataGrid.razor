@@ -8,7 +8,7 @@
                 RowDoubleClick="RowDoubleClick" Count="@count" LoadData="@LoadData" AllowVirtualization="true" Style="width: 100%; height: 100%;"
                 AllowFiltering="true" FilterPopupRenderMode="PopupRenderMode.OnDemand" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
                 LogicalFilterOperator="LogicalFilterOperator.Or"
-                AllowSorting="true">
+                AllowSorting="true"> 
     <Columns>
         <RadzenDataGridColumn Filterable="false" Property="@nameof(BaseElement.Index)" Title="" Width="40px" />
         <RadzenDataGridColumn Sortable="false" Filterable="false" Property="@nameof(BaseElement.Offset)" Title="" Width="40px" />
@@ -25,7 +25,7 @@
                 @HumandReadableBytes(detail.DataSize)
             </Template>
         </RadzenDataGridColumn>
-        <RadzenDataGridColumn Title="Value" Width="auto" IsInEditMode="IsEditing" TItem="BaseElement" Property="@nameof(BaseElement.DataString)">
+        <RadzenDataGridColumn Title="Value" Width="400px" IsInEditMode="IsEditing" TItem="BaseElement" Property="@nameof(BaseElement.DataString)">
             <Template Context="detail">
                 @detail.DataString
             </Template>
@@ -76,6 +76,11 @@
                 }
             </EditTemplate>
         </RadzenDataGridColumn>
-        <RadzenDataGridColumn Width="0" Sortable="false" Filterable="false" />
+        <RadzenDataGridColumn Width="60px" Sortable="false" Filterable="false">
+            <Template Context="detail">
+                <RadzenButton Click="@(args => ContextMenu(args, detail))" Icon="more_vert" title="From File" ButtonStyle="ButtonStyle.Dark" Size="ButtonSize.Small" />
+            </Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn Sortable="false" Filterable="false" />
     </Columns>
 </RadzenDataGrid>

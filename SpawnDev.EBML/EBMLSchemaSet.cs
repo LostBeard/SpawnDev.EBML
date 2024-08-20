@@ -17,104 +17,6 @@ namespace SpawnDev.EBML
             }
             return schemas;
         }
-        public BaseElement? Create(EBMLSchemaElement? schemaElement, SegmentSource source, ElementHeader? header = null)
-        {
-            if (schemaElement == null) return null;
-            var type = GetElementType(schemaElement.Type);
-            if (type == null) return null;
-            BaseElement? ret = schemaElement.Type switch
-            {
-                MasterElement.TypeName => new MasterElement(this, schemaElement, source, header),
-                UintElement.TypeName => new UintElement(schemaElement, source, header),
-                IntElement.TypeName => new IntElement(schemaElement, source, header),
-                FloatElement.TypeName => new FloatElement(schemaElement, source, header),
-                StringElement.TypeName => new StringElement(schemaElement, source, header),
-                UTF8Element.TypeName => new UTF8Element(schemaElement, source, header),
-                BinaryElement.TypeName => new BinaryElement(schemaElement, source, header),
-                DateElement.TypeName => new DateElement(schemaElement, source, header),
-                _ => null
-            };
-            return ret;
-        }
-        public TElement? Create<TElement>(EBMLSchemaElement? schemaElement) where TElement : BaseElement
-        {
-            if (schemaElement == null) return null;
-            var type = GetElementType(schemaElement.Type);
-            if (type == null) return null;
-            if (!typeof(TElement).IsAssignableFrom(type)) throw new Exception("Create type mismatch");
-            BaseElement? ret = schemaElement.Type switch
-            {
-                MasterElement.TypeName => new MasterElement(this, schemaElement),
-                UintElement.TypeName => new UintElement(schemaElement),
-                IntElement.TypeName => new IntElement(schemaElement),
-                FloatElement.TypeName => new FloatElement(schemaElement),
-                StringElement.TypeName => new StringElement(schemaElement),
-                UTF8Element.TypeName => new UTF8Element(schemaElement),
-                BinaryElement.TypeName => new BinaryElement(schemaElement),
-                DateElement.TypeName => new DateElement(schemaElement),
-                _ => null
-            };
-            return (TElement?)ret;
-        }
-        public BaseElement? Create(EBMLSchemaElement? schemaElement)
-        {
-            if (schemaElement == null) return null;
-            var type = GetElementType(schemaElement.Type);
-            if (type == null) return null;
-            BaseElement? ret = schemaElement.Type switch
-            {
-                MasterElement.TypeName => new MasterElement(this, schemaElement),
-                UintElement.TypeName => new UintElement(schemaElement),
-                IntElement.TypeName => new IntElement(schemaElement),
-                FloatElement.TypeName => new FloatElement(schemaElement),
-                StringElement.TypeName => new StringElement(schemaElement),
-                UTF8Element.TypeName => new UTF8Element(schemaElement),
-                BinaryElement.TypeName => new BinaryElement(schemaElement),
-                DateElement.TypeName => new DateElement(schemaElement),
-                _ => null
-            };
-            return ret;
-        }
-        public MasterElement CreateContainer(EBMLSchemaElement schemaElement)
-        {
-            if (schemaElement?.Type != MasterElement.TypeName) throw new Exception("Cannot create element: invalid EBMLSchemaElement.");
-            return new MasterElement(this, schemaElement);
-        }
-        public UintElement CreateUint(EBMLSchemaElement schemaElement, ulong value)
-        {
-            if (schemaElement?.Type != UintElement.TypeName) throw new Exception("Cannot create element: invalid EBMLSchemaElement.");
-            return new UintElement(schemaElement, value);
-        }
-        public IntElement CreateInt(EBMLSchemaElement schemaElement, long value)
-        {
-            if (schemaElement?.Type != IntElement.TypeName) throw new Exception("Cannot create element: invalid EBMLSchemaElement.");
-            return new IntElement(schemaElement, value);
-        }
-        public FloatElement CreateFloat(EBMLSchemaElement schemaElement, double value)
-        {
-            if (schemaElement?.Type != FloatElement.TypeName) throw new Exception("Cannot create element: invalid EBMLSchemaElement.");
-            return new FloatElement(schemaElement, value);
-        }
-        public UTF8Element CreateUTF8(EBMLSchemaElement schemaElement, string value)
-        {
-            if (schemaElement?.Type != UTF8Element.TypeName) throw new Exception("Cannot create element: invalid EBMLSchemaElement.");
-            return new UTF8Element(schemaElement, value);
-        }
-        public StringElement CreateString(EBMLSchemaElement schemaElement, string value)
-        {
-            if (schemaElement?.Type != StringElement.TypeName) throw new Exception("Cannot create element: invalid EBMLSchemaElement.");
-            return new StringElement(schemaElement, value);
-        }
-        public BinaryElement CreateBinary(EBMLSchemaElement schemaElement, byte[] value)
-        {
-            if (schemaElement?.Type != BinaryElement.TypeName) throw new Exception("Cannot create element: invalid EBMLSchemaElement.");
-            return new BinaryElement(schemaElement, value);
-        }
-        public DateElement CreateDate(EBMLSchemaElement schemaElement, DateTime value)
-        {
-            if (schemaElement?.Type != DateElement.TypeName) throw new Exception("Cannot create element: invalid EBMLSchemaElement.");
-            return new DateElement(schemaElement, value);
-        }
         public Type? GetElementType(string elementType)
         {
             switch (elementType)
@@ -132,8 +34,8 @@ namespace SpawnDev.EBML
         }
         public Dictionary<ulong, EBMLSchemaElement> GetElements(string docType = EBML)
         {
-            var ret = docType != EBML && Schemas.TryGetValue(EBML, out var ebmlSchema) ? ebmlSchema.Elements : new Dictionary<ulong, EBMLSchemaElement>();
-            if (Schemas.TryGetValue(docType, out var schema))
+            var ret = docType != EBML && Schemas.TryGetValue(EBML, out var ebmlSchema) ? new Dictionary<ulong, EBMLSchemaElement>(ebmlSchema.Elements) : new Dictionary<ulong, EBMLSchemaElement>();
+            if (!string.IsNullOrEmpty(docType) && Schemas.TryGetValue(docType, out var schema))
             {
                 foreach (var kvp in schema.Elements)
                 {
@@ -144,12 +46,12 @@ namespace SpawnDev.EBML
         }
         public EBMLSchemaElement? GetEBMLSchemaElement(ulong id, string docType = EBML)
         {
-            if (Schemas.TryGetValue(docType, out var schema) && schema.Elements.TryGetValue(id, out var element)) return element;
+            if (!string.IsNullOrEmpty(docType) && Schemas.TryGetValue(docType, out var schema) && schema.Elements.TryGetValue(id, out var element)) return element;
             return docType != EBML ? GetEBMLSchemaElement(id) : null;
         }
         public EBMLSchemaElement? GetEBMLSchemaElement(string name, string docType = EBML)
         {
-            if (Schemas.TryGetValue(docType, out var schema))
+            if (!string.IsNullOrEmpty(docType) && Schemas.TryGetValue(docType, out var schema))
             {
                 var tmp = schema.Elements.Values.FirstOrDefault(o => o.Name == name);
                 if (tmp != null) return tmp;
@@ -166,7 +68,6 @@ namespace SpawnDev.EBML
         {
             if (parent == null)
             {
-                // TODO
                 // must be a top-level allowed object
                 return false;
             }
@@ -228,7 +129,8 @@ namespace SpawnDev.EBML
             if (predicate != null) resourceNames = resourceNames.Where(predicate).ToArray();
             foreach (var resourceName in resourceNames)
             {
-                ret.AddRange(LoadEmbeddedSchemaXML(assembly, resourceName));
+                var tmp = LoadEmbeddedSchemaXML(assembly, resourceName);
+                ret.AddRange(tmp);
             }
             return ret;
         }
@@ -282,6 +184,77 @@ namespace SpawnDev.EBML
             {
                 return null;
             }
+        }
+        public IEnumerable<EBMLDocument> Parse(Stream stream)
+        {
+            while (stream.Position < stream.Length)
+            {
+                var startPos = stream.Position;
+                var doc = new EBMLDocument(stream, this);
+                if (doc.Data.Count() == 0)
+                {
+                    yield break;
+                }
+                var parserInfo = EBMLDocumentParsers.FirstOrDefault(o => o.DocTypes.Contains(doc.DocType));
+                if (parserInfo != null)
+                {
+                    var newDoc = parserInfo.Create(doc);
+
+                }
+                var docSize = doc.TotalSize;
+                stream.Position = startPos + (long)docSize;
+                yield return doc;
+            }
+        }
+        public List<EBMLDocumentParserInfo> _EBMLDocumentParsers { get; } = new List<EBMLDocumentParserInfo>();
+        public IEnumerable<EBMLDocumentParserInfo> EBMLDocumentParsers => _EBMLDocumentParsers;
+        public void RegisterEBMLDocumentType(Type parserType, string docType) => RegisterEBMLDocumentType(parserType, new[] { docType });
+        public void RegisterEBMLDocumentType(Type parserType, IEnumerable<string> docTypes) 
+        {
+            // find the required constructor (EBMLDocument)
+            var constructor = parserType.GetConstructors().FirstOrDefault(o =>
+            {
+                var tmp = o.GetParameters();
+                return tmp.Length == 1 && typeof(EBMLDocument).IsAssignableFrom(tmp[0].ParameterType);
+            });
+            if (constructor == null)
+            {
+                throw new Exception("EBMLDocument parser does not have a valid constructor.");
+            }
+            var factory = (EBMLDocument doc) => (EBMLDocument)constructor.Invoke(new object?[] { doc });
+            var ebmlDocumentParserInfo = new EBMLDocumentParserInfo(docTypes, parserType, factory);
+            _EBMLDocumentParsers.Add(ebmlDocumentParserInfo);
+        }
+        public void RegisterEBMLDocumentType<TEBMLDocument>(string docType) where TEBMLDocument : EBMLDocument => RegisterEBMLDocumentType<TEBMLDocument>(new[] { docType });
+        public void RegisterEBMLDocumentType<TEBMLDocument>(IEnumerable<string> docTypes) where TEBMLDocument : EBMLDocument
+        {
+            var parserType = typeof(TEBMLDocument);
+            // find the required constructor (EBMLDocument)
+            var constructor = parserType.GetConstructors().FirstOrDefault(o =>
+            {
+                var tmp = o.GetParameters();
+                return tmp.Length == 1 && typeof(EBMLDocument).IsAssignableFrom(tmp[0].ParameterType);
+            });
+            if (constructor == null)
+            {
+                throw new Exception("EBMLDocument parser does not have a valid constructor.");
+            }
+            var factory = (EBMLDocument doc) => (EBMLDocument)constructor.Invoke(new object?[] { doc });
+            var ebmlDocumentParserInfo = new EBMLDocumentParserInfo(docTypes, parserType, factory);
+            _EBMLDocumentParsers.Add(ebmlDocumentParserInfo);
+        }
+        public void RegisterEBMLDocumentType<TEBMLDocument>(string docType, Func<EBMLDocument, EBMLDocument> factory) where TEBMLDocument : EBMLDocument => RegisterEBMLDocumentType<TEBMLDocument>(new[] { docType }, factory);
+        public void RegisterEBMLDocumentType<TEBMLDocument>(IEnumerable<string> docTypes, Func<EBMLDocument, EBMLDocument> factory) where TEBMLDocument : EBMLDocument
+        {
+            var parserType = typeof(TEBMLDocument);
+            var ebmlDocumentParserInfo = new EBMLDocumentParserInfo(docTypes, parserType, factory);
+            _EBMLDocumentParsers.Add(ebmlDocumentParserInfo);
+        }
+        public void RegisterEBMLDocumentType(Type parserType, string docType, Func<EBMLDocument, EBMLDocument> factory) => RegisterEBMLDocumentType(parserType, new[] { docType }, factory);
+        public void RegisterEBMLDocumentType(Type parserType, IEnumerable<string> docTypes, Func<EBMLDocument, EBMLDocument> factory) 
+        {
+            var ebmlDocumentParserInfo = new EBMLDocumentParserInfo(docTypes, parserType, factory);
+            _EBMLDocumentParsers.Add(ebmlDocumentParserInfo);
         }
     }
 }
