@@ -196,7 +196,7 @@ namespace BlazorEBMLViewer.Pages
         }
         async Task ShowOpenFileDialogFallback()
         {
-            var result = await FilePicker.ShowOpenFilePicker(".ebml,.mkv,.mka,.mks");
+            var result = await FilePicker.ShowOpenFilePicker(".ebml,.webm,.mkv,.mka,.mks");
             var file = result?.FirstOrDefault();
             if (file == null) return;
             CloseDocument();
@@ -214,7 +214,7 @@ namespace BlazorEBMLViewer.Pages
         }
         async Task ShowOpenFileDialog()
         {
-            if (true || JS.IsUndefined("window.showOpenFilePicker"))
+            if (JS.IsUndefined("window.showOpenFilePicker"))
             {
                 await ShowOpenFileDialogFallback();
                 return;
@@ -232,7 +232,7 @@ namespace BlazorEBMLViewer.Pages
              new ShowOpenFilePickerType{ Accept = new Dictionary<string, List<string>>
              {
                  { "application/octet-stream", new List<string>{ ".ebml", ".mks" } },
-                 { "video/x-matroska", new List<string>{ ".mkv", } },
+                 { "video/x-matroska", new List<string>{ ".mkv", ".webm" } },
                  { "audio/x-matroska", new List<string>{ ".mka" } },
              }, Description = "EBML Files" }
             }

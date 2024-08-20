@@ -6,7 +6,6 @@ using SpawnDev.BlazorJS;
 using SpawnDev.EBML;
 using SpawnDev.EBML.Elements;
 using System.Linq.Dynamic.Core;
-using System.Reflection.Emit;
 
 namespace BlazorEBMLViewer.Components
 {
