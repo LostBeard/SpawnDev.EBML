@@ -35,10 +35,12 @@ namespace SpawnDev.EBML
         public EBMLDocument(Stream stream, EBMLSchemaSet schemas, string? filename = null) : base(schemas, new StreamSegment(stream))
         {
             if (!string.IsNullOrEmpty(filename)) Filename = filename;
+            LoadEngines();
         }
         public EBMLDocument(SegmentSource stream, EBMLSchemaSet schemas, string? filename = null) : base(schemas, stream)
         {
             if (!string.IsNullOrEmpty(filename)) Filename = filename;
+            LoadEngines();
         }
         public EBMLDocument(string docType, EBMLSchemaSet schemas, string? filename = null) : base(schemas)
         {
@@ -47,6 +49,19 @@ namespace SpawnDev.EBML
             OnChanged += EBMLDocument_OnChanged;
             ElementFound += EBMLDocument_ElementFound;
             ElementRemoved += EBMLDocument_ElementRemoved;
+            LoadEngines();
+        }
+        public Dictionary<EBMLDocumentParserInfo, EBMLDocumentEngine> DocumentEngines { get; private set; }
+        void LoadEngines()
+        {
+            var ret = new Dictionary<EBMLDocumentParserInfo, EBMLDocumentEngine>();
+            DocumentEngines = ret;
+            foreach (var engineInfo in SchemaSet.EBMLDocumentEngines)
+            {
+                var engine = engineInfo.Create(this);
+                engine.Loaded(this);
+                ret.Add(engineInfo, engine);
+            }
         }
         private void EBMLDocument_ElementRemoved(BaseElement ret)
         {

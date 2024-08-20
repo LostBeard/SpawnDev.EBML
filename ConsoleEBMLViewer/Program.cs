@@ -6,7 +6,7 @@ Console.WriteLine("Hello, World!");
 
 var schemaSet = new EBMLSchemaSet();
 schemaSet.LoadExecutingAssemblyEmbeddedSchemaXMLs();
-schemaSet.RegisterEBMLDocumentType<MatroskaDocument>(new[] { "matroska", "webm" } );
+schemaSet.RegisterDocumentEngine<MatroskaDocumentEngine>();
 
 
 using var fileStream = File.Open(@"k:\Video\matroska_audio_test.mka", FileMode.Open);

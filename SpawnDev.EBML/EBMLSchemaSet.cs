@@ -1,5 +1,4 @@
 ﻿using SpawnDev.EBML.Elements;
-using SpawnDev.EBML.Segments;
 using System.Reflection;
 
 namespace SpawnDev.EBML
@@ -185,76 +184,63 @@ namespace SpawnDev.EBML
                 return null;
             }
         }
+        /// <summary>
+        /// Parses a stream returning EBML documents as they are found
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <returns></returns>
         public IEnumerable<EBMLDocument> Parse(Stream stream)
         {
-            while (stream.Position < stream.Length)
+            var startPos = stream.Position;
+            while (startPos < stream.Length)
             {
-                var startPos = stream.Position;
+                stream.Position = startPos;
                 var doc = new EBMLDocument(stream, this);
                 if (doc.Data.Count() == 0)
                 {
                     yield break;
                 }
-                var parserInfo = EBMLDocumentParsers.FirstOrDefault(o => o.DocTypes.Contains(doc.DocType));
-                if (parserInfo != null)
-                {
-                    var newDoc = parserInfo.Create(doc);
-
-                }
                 var docSize = doc.TotalSize;
-                stream.Position = startPos + (long)docSize;
+                startPos = startPos + (long)docSize;
                 yield return doc;
             }
         }
-        public List<EBMLDocumentParserInfo> _EBMLDocumentParsers { get; } = new List<EBMLDocumentParserInfo>();
-        public IEnumerable<EBMLDocumentParserInfo> EBMLDocumentParsers => _EBMLDocumentParsers;
-        public void RegisterEBMLDocumentType(Type parserType, string docType) => RegisterEBMLDocumentType(parserType, new[] { docType });
-        public void RegisterEBMLDocumentType(Type parserType, IEnumerable<string> docTypes) 
+        private List<EBMLDocumentParserInfo> _EBMLDocumentEngines { get; } = new List<EBMLDocumentParserInfo>();
+        /// <summary>
+        /// Document engines can handle document events and provide additional functionality
+        /// </summary>
+        public IEnumerable<EBMLDocumentParserInfo> EBMLDocumentEngines => _EBMLDocumentEngines;
+        /// <summary>
+        /// Register a document engine that can handle document events and provide additional tools for a document
+        /// </summary>
+        public void RegisterDocumentEngine(Type engineType) 
         {
-            // find the required constructor (EBMLDocument)
-            var constructor = parserType.GetConstructors().FirstOrDefault(o =>
-            {
-                var tmp = o.GetParameters();
-                return tmp.Length == 1 && typeof(EBMLDocument).IsAssignableFrom(tmp[0].ParameterType);
-            });
-            if (constructor == null)
-            {
-                throw new Exception("EBMLDocument parser does not have a valid constructor.");
-            }
-            var factory = (EBMLDocument doc) => (EBMLDocument)constructor.Invoke(new object?[] { doc });
-            var ebmlDocumentParserInfo = new EBMLDocumentParserInfo(docTypes, parserType, factory);
-            _EBMLDocumentParsers.Add(ebmlDocumentParserInfo);
+            var ebmlDocumentParserInfo = new EBMLDocumentParserInfo(engineType);
+            _EBMLDocumentEngines.Add(ebmlDocumentParserInfo);
         }
-        public void RegisterEBMLDocumentType<TEBMLDocument>(string docType) where TEBMLDocument : EBMLDocument => RegisterEBMLDocumentType<TEBMLDocument>(new[] { docType });
-        public void RegisterEBMLDocumentType<TEBMLDocument>(IEnumerable<string> docTypes) where TEBMLDocument : EBMLDocument
+        /// <summary>
+        /// Register a document engine that can handle document events and provide additional tools for a document
+        /// </summary>
+        public void RegisterDocumentEngine<TEBMLDocumentEngine>() where TEBMLDocumentEngine : EBMLDocumentEngine
         {
-            var parserType = typeof(TEBMLDocument);
-            // find the required constructor (EBMLDocument)
-            var constructor = parserType.GetConstructors().FirstOrDefault(o =>
-            {
-                var tmp = o.GetParameters();
-                return tmp.Length == 1 && typeof(EBMLDocument).IsAssignableFrom(tmp[0].ParameterType);
-            });
-            if (constructor == null)
-            {
-                throw new Exception("EBMLDocument parser does not have a valid constructor.");
-            }
-            var factory = (EBMLDocument doc) => (EBMLDocument)constructor.Invoke(new object?[] { doc });
-            var ebmlDocumentParserInfo = new EBMLDocumentParserInfo(docTypes, parserType, factory);
-            _EBMLDocumentParsers.Add(ebmlDocumentParserInfo);
+            var ebmlDocumentParserInfo = new EBMLDocumentParserInfo(typeof(TEBMLDocumentEngine));
+            _EBMLDocumentEngines.Add(ebmlDocumentParserInfo);
         }
-        public void RegisterEBMLDocumentType<TEBMLDocument>(string docType, Func<EBMLDocument, EBMLDocument> factory) where TEBMLDocument : EBMLDocument => RegisterEBMLDocumentType<TEBMLDocument>(new[] { docType }, factory);
-        public void RegisterEBMLDocumentType<TEBMLDocument>(IEnumerable<string> docTypes, Func<EBMLDocument, EBMLDocument> factory) where TEBMLDocument : EBMLDocument
+        /// <summary>
+        /// Register a document engine that can handle document events and provide additional tools for a document
+        /// </summary>
+        public void RegisterDocumentEngine<TEBMLDocumentEngine>(Func<EBMLDocument, EBMLDocumentEngine> factory) where TEBMLDocumentEngine : EBMLDocumentEngine
         {
-            var parserType = typeof(TEBMLDocument);
-            var ebmlDocumentParserInfo = new EBMLDocumentParserInfo(docTypes, parserType, factory);
-            _EBMLDocumentParsers.Add(ebmlDocumentParserInfo);
+            var ebmlDocumentParserInfo = new EBMLDocumentParserInfo(typeof(TEBMLDocumentEngine), factory);
+            _EBMLDocumentEngines.Add(ebmlDocumentParserInfo);
         }
-        public void RegisterEBMLDocumentType(Type parserType, string docType, Func<EBMLDocument, EBMLDocument> factory) => RegisterEBMLDocumentType(parserType, new[] { docType }, factory);
-        public void RegisterEBMLDocumentType(Type parserType, IEnumerable<string> docTypes, Func<EBMLDocument, EBMLDocument> factory) 
+        /// <summary>
+        /// Register a document engine that can handle document events and provide additional tools for a document
+        /// </summary>
+        public void RegisterDocumentEngine(Type engineType, Func<EBMLDocument, EBMLDocumentEngine> factory) 
         {
-            var ebmlDocumentParserInfo = new EBMLDocumentParserInfo(docTypes, parserType, factory);
-            _EBMLDocumentParsers.Add(ebmlDocumentParserInfo);
+            var ebmlDocumentParserInfo = new EBMLDocumentParserInfo(engineType, factory);
+            _EBMLDocumentEngines.Add(ebmlDocumentParserInfo);
         }
     }
 }
