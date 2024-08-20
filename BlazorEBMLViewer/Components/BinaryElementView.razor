@@ -1,0 +1,75 @@
+﻿@using SpawnDev.BlazorJS.Toolbox
+@using SpawnDev.EBML.Elements
+
+<div>
+    @if (!string.IsNullOrEmpty(ImageDataUrl))
+    {
+        <img style="max-width: 100%; max-height: 100%;" src="@ImageDataUrl" />
+    }
+</div>
+
+
+@code {
+    [Parameter]
+    public BinaryElement Element { get; set; }
+
+    [Parameter]
+    public EventCallback OnChanged { get; set; }
+
+    [Inject]
+    DialogService DialogService { get; set; }
+
+    string ImageDataUrl = "";
+
+
+    Dictionary<string, int[]> BinPatters = new Dictionary<string, int[]>
+    {
+        { "image/jpeg",  new int[] { 0xff, 0xd8, 0xff, 0xe0, -1, -1, 0x4a, 0x46, 0x49, 0x46, 0 }},
+        { "image/png",  new int[] { 0x89 , 0x50 , 0x4E , 0x47 , 0x0D , 0x0A , 0x1A , 0x0A  }},
+    };
+
+    string DetectContentType(byte[] data)
+    {
+        var temp = BinPatters.ToDictionary();
+        var maxPatternSize = BinPatters.Max(o => o.Value.Length);
+        for (var i = 0; i < maxPatternSize && i < data.Length && temp.Count > 0; i++)
+        {
+            var b = data[i];
+            var failed = new List<string>();
+            foreach (var t in temp)
+            {
+                var pByte = t.Value[i];
+                if (pByte >= 0 && b != pByte)
+                {
+                    failed.Add(t.Key);
+                }
+                else if (i == t.Value.Length - 1)
+                {
+                    // this pattern made it all the way through
+                    return t.Key;
+                }
+            }
+            foreach (var t in failed)
+            {
+                temp.Remove(t);
+            }
+        }
+        return "";
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var data = Element.Data;
+        var fileType = DetectContentType(data);
+        using var blob = string.IsNullOrEmpty(fileType) ? new Blob(new byte[][] { Element.Data }) : new Blob(new byte[][] { Element.Data }, new BlobOptions { Type = fileType });
+        if (fileType != null && fileType.StartsWith("image/"))
+        {
+            ImageDataUrl = await blob.ToDataURLAsync();
+        }
+        else
+        {
+            ImageDataUrl = null;
+        }
+        StateHasChanged();
+    }
+}

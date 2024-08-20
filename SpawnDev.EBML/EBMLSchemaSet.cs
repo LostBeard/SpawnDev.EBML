@@ -1,8 +1,6 @@
 ﻿using SpawnDev.EBML.Elements;
 using SpawnDev.EBML.Segments;
 using System.Reflection;
-using System.Reflection.PortableExecutable;
-using System.Xml.Linq;
 
 namespace SpawnDev.EBML
 {
@@ -181,14 +179,6 @@ namespace SpawnDev.EBML
             var parentMasterName = parent.Name;
             var path = $@"{parentPath.TrimEnd('\\')}\{elementName}";
             var depth = parent.Depth + 1;
-            if (elementName == "CRC-32")
-            {
-                var nmt = true;
-            }
-            else if (elementName == "Void")
-            {
-                var nmt = true;
-            }
             if (path == schemaElement.Path)
             {
                 return true;
@@ -200,16 +190,10 @@ namespace SpawnDev.EBML
             else if (path == schemaElement.Path.Replace("+", ""))
             {
                 // TODO - better check than this
+                // this won't work for nested which is what + indicates is possible
+                // Tags
                 return true;
             }
-            //else if (elementName == "CRC-32")
-            //{
-            //    return true;
-            //}
-            //else if (elementName == "Void")
-            //{
-            //    return true;
-            //}
             return schemaElement.IsGlobal;
         }
         public List<MasterElement> CheckParents(List<MasterElement> parents, EBMLSchemaElement? schemaElement)

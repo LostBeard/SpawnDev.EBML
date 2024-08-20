@@ -1,8 +1,9 @@
 ﻿@using SpawnDev.BlazorJS.Toolbox
 @using SpawnDev.EBML.Elements
 
-<RadzenButton Click="OnClick" Icon="attach_file" Size="ButtonSize.Small" />
-<RadzenButton Click="Clear" Icon="delete" Size="ButtonSize.Small" />
+<RadzenButton Click="OnClick" Icon="attach_file" title="From File" ButtonStyle="ButtonStyle.Dark" Size="ButtonSize.Small" />
+<RadzenButton Click="Download" Icon="file_download" title="Download" ButtonStyle="ButtonStyle.Dark" Size="ButtonSize.Small" />
+<RadzenButton Click="Clear" Icon="delete" Disabled="@(Element.DataSize == 0)" title="Clear" ButtonStyle="ButtonStyle.Dark" Size="ButtonSize.Small" />
 
 @code {
     [Parameter]
@@ -10,6 +11,35 @@
 
     [Parameter]
     public EventCallback OnChanged { get; set; }
+
+    [Inject]
+    DialogService DialogService { get; set; }
+
+    async Task Download()
+    {
+        try
+        {
+            await Task.Delay(50);
+            var mem = new MemoryStream();
+            mem.Position = 0;
+            var length = mem.Length;
+            // If this is:
+            // \Segment\Attachments\AttachedFile\FileData
+            // then the filename is located here
+            // \Segment\Attachments\AttachedFile\FileName
+            var filename = Element.Parent!.ReadString("FileName");
+            if (string.IsNullOrWhiteSpace(filename))
+            {
+                filename = $"{Element.Name}.data";
+            }
+            using var tmp = new Blob(new byte[][] { Element.Data });
+            await tmp.StartDownload(filename);
+        }
+        catch
+        {
+
+        }
+    }
 
     async Task OnClick(MouseEventArgs args)
     {
@@ -20,10 +50,31 @@
         using var arrayBuffer = await file.ArrayBuffer();
         var bytes = arrayBuffer.ReadBytes();
         Element.Data = bytes;
+        var filename = file.Name;
+        // offer to set the filename field if it exists
+        var fileNameElement = Element.Parent!.GetElement<UTF8Element>("FileName");
+        var isMkvAttachedFile = Element.Path == @"\Segment\Attachments\AttachedFile\FileData";
+        if (fileNameElement != null || isMkvAttachedFile)
+        {
+            var confirm = await DialogService.Confirm("Set FileName field?");
+            if (confirm == true)
+            {
+                if (fileNameElement != null)
+                {
+                    fileNameElement.Data = filename;
+                }
+                else
+                {
+                    Element.Parent!.AddUTF8("FileName", filename);
+                }
+            }
+        }
         await OnChanged.InvokeAsync();
     }
     async Task Clear(MouseEventArgs args)
     {
+        var confirm = await DialogService.Confirm("Clear data?");
+        if (confirm != true) return;
         Element.Data = new byte[0];
         await OnChanged.InvokeAsync();
     }

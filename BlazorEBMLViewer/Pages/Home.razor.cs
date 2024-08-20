@@ -15,6 +15,7 @@ namespace BlazorEBMLViewer.Pages
     {
         public bool DocumentBusy { get; set; }
         public EBMLDocument? Document { get; set; }
+        public string? ActiveContainerTypeName => ActiveContainer?.GetType().Name;
         public MasterElement? ActiveContainer { get; set; }
         public string Path => ActiveContainer?.Path ?? "";
         bool CanGoUp => Path.Split('\\', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Length > 0;

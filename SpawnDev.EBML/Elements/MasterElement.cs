@@ -86,6 +86,12 @@ namespace SpawnDev.EBML.Elements
             }
             return ret;
         }
+        public IEnumerable<MasterElement> AddMissingContainers()
+        {
+            var missing = GetMissingElementSchemas();
+            var masterEls = missing.Where(o => o.Type == MasterElement.TypeName).Select(o => AddElement(o)).Cast<MasterElement>().ToList();
+            return masterEls;
+        }
         public MasterElement? AddContainer(string name)
         {
             var schemaElement = SchemaSet.GetEBMLSchemaElement(name, DocType);

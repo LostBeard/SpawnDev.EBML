@@ -41,16 +41,19 @@
                             </RadzenSplitterPane>
                             <RadzenSplitterPane>
                                 <RadzenSplitter Orientation="Orientation.Vertical" Style="width: 100%; height: 100%;">
-                                    <RadzenSplitterPane Size="80%">
-                                        <div style="position: relative; width: 100%; height: 100%;">
+                                    <RadzenSplitterPane Size="20%">
+                                        <div style="position: relative; width: 100%; height: 100%;; padding: 1rem;">
                                             <!-- Top -->
+                                            <span style="font-weight: bold;">Definition: </span>@Grid?.Selected?.SchemaElement?.Definition
                                             
                                         </div>
                                     </RadzenSplitterPane>
                                     <RadzenSplitterPane>
                                         <div style="position: relative; width: 100%; height: 100%; padding: 1rem;">
-                                            <!-- Bottom -->
-                                            <span style="font-weight: bold;">Definition: </span>@Grid?.Selected?.SchemaElement?.Definition
+                                            @if (Grid.Selected is BinaryElement binaryElement)
+                                            {
+                                                <BinaryElementView Element="binaryElement"></BinaryElementView>
+                                            }
                                         </div>
                                     </RadzenSplitterPane>
                                 </RadzenSplitter>

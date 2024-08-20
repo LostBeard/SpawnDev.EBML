@@ -68,17 +68,8 @@ namespace SpawnDev.EBML
             var uintEl = ebmlHeader.AddUint("DocTypeVersion", version);
             var headerDataSize = ebmlHeader.ElementHeader!.Size;
             var headerSize = ebmlHeader.ElementHeader!.HeaderSize;
-            var nmt = true;
+            // Adds any required root level containers
+            AddMissingContainers();
         }
-        //public override void CopyTo(Stream stream)
-        //{
-        //    SegmentSource.Position = 0;
-        //    SegmentSource.CopyTo(stream);
-        //}
-        //public override Task CopyToAsync(Stream stream)
-        //{
-        //    SegmentSource.Position = 0;
-        //    return SegmentSource.CopyToAsync(stream);
-        //}
     }
 }
