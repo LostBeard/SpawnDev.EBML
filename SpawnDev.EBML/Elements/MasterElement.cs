@@ -59,7 +59,7 @@ namespace SpawnDev.EBML.Elements
             }
             return ret;
         }
-        public int ChildIndex(BaseElement element)
+        public int GetChildIndex(BaseElement element)
         {
             var data = (List<BaseElement>)Data;
             return data.IndexOf(element);

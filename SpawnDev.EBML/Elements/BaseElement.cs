@@ -11,8 +11,27 @@ namespace SpawnDev.EBML.Elements
     }
     public class BaseElement
     {
+        public long Offset
+        {
+            get
+            {
+                var index = Index;
+                if (index < 0) return 0;
+                long offset = 0;
+                BaseElement prev = index == 0 ? Parent! : Parent!.Data.ElementAt(index - 1);
+                if (index == 0)
+                {
+                    offset = prev.Offset + (long)Parent!.HeaderSize;
+                }
+                else
+                {
+                    offset = prev.Offset + (long)prev.TotalSize;
+                }
+                return offset;
+            }
+        }
         public virtual Source Source { get; protected set; }
-        public int Index => Parent == null ? -1 : Parent.ChildIndex(this);
+        public int Index => Parent == null ? -1 : Parent.GetChildIndex(this);
         public virtual string Type => SchemaElement?.Type ?? "";
         public virtual string DataString { get; set; } = "";
         public virtual string DocType => SchemaElement?.DocType ?? Parent?.DocType ?? EBMLSchemaSet.EBML;
@@ -141,7 +160,7 @@ namespace SpawnDev.EBML.Elements
         public event Action<BaseElement> OnChanged;
         public Stream ToStream()
         {
-            return ElementHeader == null ? new MultiStreamSegment(new Stream[] { SegmentSource }) : new MultiStreamSegment(new Stream[] { ElementHeader.SegmentSource , SegmentSource});
+            return ElementHeader == null ? new MultiStreamSegment(new Stream[] { SegmentSource }) : new MultiStreamSegment(new Stream[] { ElementHeader.SegmentSource, SegmentSource });
         }
         public byte[] ToBytes()
         {

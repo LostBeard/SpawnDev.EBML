@@ -11,6 +11,7 @@
                 AllowSorting="true">
     <Columns>
         <RadzenDataGridColumn Filterable="false" Property="@nameof(BaseElement.Index)" Title="" Width="40px" />
+        <RadzenDataGridColumn Filterable="false" Property="@nameof(BaseElement.Offset)" Title="" Width="40px" />
         <RadzenDataGridColumn Filterable="false" Title="" Width="40px">
             <Template Context="detail">
                 <RadzenIcon Icon="@AppService.GetElementTypeIcon(detail.SchemaElement)"></RadzenIcon>
