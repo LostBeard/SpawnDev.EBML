@@ -69,31 +69,11 @@ namespace SpawnDev.EBML
         }
         private void EBMLDocument_ElementFound(BaseElement ret)
         {
-            //if (ret.Path == @"\EBML")
-            //{
-            //    if (ret is MasterElement ebmlMaster && this is EBMLDocument thisDoc)
-            //    {
-            //        var newDocType = ebmlMaster.ReadString("DocType");
-            //        if (!string.IsNullOrEmpty(newDocType))
-            //        {
-            //            _DocType = newDocType;
-            //        }
-            //    }
-            //}
+
         }
         private void EBMLDocument_OnChanged(BaseElement ret)
         {
-            //if (ret.Path == @"\EBML")
-            //{
-            //    if (ret is MasterElement ebmlMaster && this is EBMLDocument thisDoc)
-            //    {
-            //        var newDocType = ebmlMaster.ReadString("DocType");
-            //        if (!string.IsNullOrEmpty(newDocType))
-            //        {
-            //            _DocType = newDocType;
-            //        }
-            //    }
-            //}
+
         }
         /// <summary>
         /// This initializes a very minimal EBML document based on the current DocType
