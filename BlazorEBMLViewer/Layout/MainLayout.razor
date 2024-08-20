@@ -1,0 +1,43 @@
+﻿@inherits LayoutComponentBase
+
+<PageTitle>@Title</PageTitle>
+
+<BlazorEBMLViewer.Layout.RadzenTheme Theme="material-dark" />
+
+<link rel="stylesheet" href="css/radzen-tweak.css" />
+
+<RadzenComponents />
+<RadzenLayout Style="grid-template-columns: auto 1fr auto; grid-template-areas: 'rz-header rz-header rz-header' 'rz-sidebar rz-body rz-right-sidebar'">
+    <RadzenHeader>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0" JustifyContent="JustifyContent.SpaceBetween">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0" JustifyContent="JustifyContent.Left">
+                <RadzenSidebarToggle Style="margin: 0;" Click="@(() => leftSidebarExpanded = !leftSidebarExpanded)" />
+                <RadzenLabel Text="@Title" />
+            </RadzenStack>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0" JustifyContent="JustifyContent.Right">
+                <AppTrayArea></AppTrayArea>
+                <RadzenSidebarToggle Style="margin: 0;" Click="@(() => rightSidebarExpanded = !rightSidebarExpanded)" />
+            </RadzenStack>
+        </RadzenStack>
+    </RadzenHeader>
+    <RadzenSidebar @bind-Expanded="@leftSidebarExpanded" Responsive="false">
+        <RadzenPanelMenu>
+            <RadzenPanelMenuItem Text="Home" Icon="tv" Path="" />
+             @* <RadzenPanelMenuItem Text="Outgoing" Icon="tv" Path="OutgoingStreams" />
+             <RadzenPanelMenuItem Text="Settings" Icon="settings" Path="AppSettings" /> *@
+        </RadzenPanelMenu>
+        <div class="rz-p-4">
+            <!-- Left Sidebar -->
+        </div>
+    </RadzenSidebar>
+    <RadzenBody Style="width: auto; position: relative; padding: 0;">
+        <div style="position: absolute; left: 0; top: 0; right: 0; bottom: 0;">
+            @Body
+        </div>
+    </RadzenBody>
+    <RadzenSidebar Responsive="false" @bind-Expanded="@rightSidebarExpanded" Style="grid-area: rz-right-sidebar">
+        <div class="rz-p-4">
+            <!-- Right Sidebar -->
+        </div>
+    </RadzenSidebar>
+</RadzenLayout>

@@ -1,0 +1,80 @@
+﻿@using SpawnDev.EBML
+@using SpawnDev.EBML.Elements
+@using System.Linq.Dynamic.Core
+
+<RadzenDataGrid TItem="BaseElement" IsLoading="@(IsLoading || DocumentBusy)" RowUpdate="@OnUpdateRow" CellClick="OnCellClick" ColumnWidth="auto" AllowColumnResize="true" @ref=grid Data="@orderDetails"
+                SelectionMode="DataGridSelectionMode.Single"
+                AllowRowSelectOnRowClick="true" RowSelect="RowSelect" RowDeselect="RowDeselect"
+                RowDoubleClick="RowDoubleClick" Count="@count" LoadData="@LoadData" AllowVirtualization="true" Style="width: 100%; height: 100%;"
+                AllowFiltering="true" FilterPopupRenderMode="PopupRenderMode.OnDemand" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                LogicalFilterOperator="LogicalFilterOperator.Or"
+                AllowSorting="true">
+    <Columns>
+        <RadzenDataGridColumn Filterable="false" Property="@nameof(BaseElement.Index)" Title="" Width="40px" />
+        <RadzenDataGridColumn Filterable="false" Title="" Width="40px">
+            <Template Context="detail">
+                <RadzenIcon Icon="@AppService.GetElementTypeIcon(detail.SchemaElement)"></RadzenIcon>
+            </Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn FilterProperty="@nameof(BaseElement.IdHex)" SortProperty="@nameof(BaseElement.Id)" Property="@nameof(BaseElement.IdHex)" Title="Id" Width="110px" />
+        <RadzenDataGridColumn Property="@nameof(BaseElement.Name)" Title="Name" Width="150px" />
+        <RadzenDataGridColumn Property="@nameof(BaseElement.Type)" Title="Type" Width="110px" />
+        <RadzenDataGridColumn Filterable="false" Property="@nameof(BaseElement.DataSize)" Title="Size" Width="110px">
+            <Template Context="detail">
+                @HumandReadableBytes(detail.DataSize)
+            </Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn Title="Value" Width="auto" IsInEditMode="IsEditing" TItem="BaseElement" Property="@nameof(BaseElement.DataString)">
+            <Template Context="detail">
+                @detail.DataString
+            </Template>
+            <EditTemplate Context="detail">
+                @switch (detail.Type)
+                {
+                    case "master":
+                        {
+
+                            break;
+                        }
+                    case "date":
+                        {
+                            var el = detail as DateElement;
+                            <RadzenDatePicker @bind-Value=@el.Data Name="RadzenDatePickerBindValue" ShowCalendarWeek />
+                            break;
+                        }
+                    case "binary":
+                        {
+                            var el = detail as BinaryElement;
+                            <BinaryElementCellEditor Element="el"></BinaryElementCellEditor>
+                            break;
+                        }
+                    case "float":
+                        {
+                            var el = detail as FloatElement;
+                            <RadzenNumeric ShowUpDown="false" TValue="double" @bind-Value=@el.Data InputAttributes="@(new Dictionary<string,object>(){ { "aria-label", "enter value" }})" />
+                            break;
+                        }
+                    case "uinteger":
+                        {
+                            var el = detail as UintElement;
+                            <RadzenNumeric ShowUpDown="false" TValue="ulong" @bind-Value=@el.Data InputAttributes="@(new Dictionary<string,object>(){ { "aria-label", "enter value" }})" />
+                            break;
+                        }
+                    case "integer":
+                        {
+                            var el = detail as IntElement;
+                            <RadzenNumeric ShowUpDown="false" TValue="long" @bind-Value=@el.Data InputAttributes="@(new Dictionary<string,object>(){ { "aria-label", "enter value" }})" />
+                            break;
+                        }
+                    case "utf-8":
+                    case "string":
+                        {
+                            <RadzenTextBox @bind-Value="detail.DataString" Style="width:200px; display: block" aria-label="Enter new value" />
+                            break;
+                        }
+                }
+            </EditTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn Width="0" Sortable="false" Filterable="false" />
+    </Columns>
+</RadzenDataGrid>

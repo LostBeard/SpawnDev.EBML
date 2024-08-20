@@ -1,0 +1,30 @@
+﻿@using SpawnDev.BlazorJS.Toolbox
+@using SpawnDev.EBML.Elements
+
+<RadzenButton Click="OnClick" Icon="attach_file" Size="ButtonSize.Small" />
+<RadzenButton Click="Clear" Icon="delete" Size="ButtonSize.Small" />
+
+@code {
+    [Parameter]
+    public BinaryElement Element { get; set; }
+
+    [Parameter]
+    public EventCallback OnChanged { get; set; }
+
+    async Task OnClick(MouseEventArgs args)
+    {
+        var result = await FilePicker.ShowOpenFilePicker(multiple: false);
+        var file = result?.FirstOrDefault();
+        if (file == null) return;
+        await Task.Delay(50);
+        using var arrayBuffer = await file.ArrayBuffer();
+        var bytes = arrayBuffer.ReadBytes();
+        Element.Data = bytes;
+        await OnChanged.InvokeAsync();
+    }
+    async Task Clear(MouseEventArgs args)
+    {
+        Element.Data = new byte[0];
+        await OnChanged.InvokeAsync();
+    }
+}

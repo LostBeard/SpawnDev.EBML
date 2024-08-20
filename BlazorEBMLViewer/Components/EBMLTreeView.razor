@@ -1,0 +1,76 @@
+﻿@using SpawnDev.EBML;
+@using SpawnDev.EBML.Elements;
+
+<div style="width: 100%; height: 100%;">
+    <RadzenTree Data=@entries Expand=@LoadFiles Style="width: 100%; height: 100%;" >
+        <RadzenTreeLevel Text=@GetTextForNode Template=@FileOrFolderTemplate />
+    </RadzenTree>
+</div>
+
+@code {
+
+    [Parameter]
+    public EBMLDocument? Document { get; set; }
+
+    EBMLDocument? _Document = null;
+
+    IEnumerable<BaseElement> entries;
+    protected override void OnInitialized()
+    {
+        entries = Document == null ? new List<BaseElement>() : Document.Data;
+    }
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        if (_Document != Document)
+        {
+            _Document = Document;
+            entries = Document == null ? new List<BaseElement>() : Document.Data;
+        }
+    }
+    protected override void OnAfterRender(bool firstRender)
+    {
+        base.OnAfterRender(firstRender);
+    }
+    void LoadFiles(TreeExpandEventArgs args)
+    {
+        var entry = args.Value as BaseElement;
+        if (entry == null)
+        {
+            return;
+        }
+        if (Document == null)
+        {
+            return;
+        }
+        var data = entry is MasterElement masterElement ? masterElement.Data : null;
+
+        args.Children.Data = data; // Directory.EnumerateFileSystemEntries(directory);
+        args.Children.Text = GetTextForNode;
+        args.Children.HasChildren = (entry) => entry is MasterElement;
+        args.Children.Template = FileOrFolderTemplate;
+        args.Children.Checkable = o => false;
+    }
+    string GetTextForNode(object data)
+    {
+        var el = data as BaseElement;
+        return el?.Name ?? "UNKNOWN!";
+    }
+    RenderFragment<RadzenTreeItem> FileOrFolderTemplate = (context) => builder =>
+    {
+        var el = context.Value as BaseElement;
+        var isDirectory = false;
+        if (el is MasterElement masterElement)
+        {
+            isDirectory = true;
+        }
+        else
+        {
+
+        }
+        builder.OpenComponent<RadzenIcon>(0);
+        builder.AddAttribute(1, nameof(RadzenIcon.Icon), isDirectory ? "folder" : "insert_drive_file");
+        builder.CloseComponent();
+        builder.AddContent(3, context.Text);
+    };
+}
