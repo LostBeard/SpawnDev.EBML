@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "BlazorEBMLViewer",
   "resources": {
-    "hash": "sha256-r+bxN98Dpniyi67xM0bub1KTcNs6mbHU8usucxasNT0=",
+    "hash": "sha256-L9VfRitsKpDqcUNzfa+Ciy7oqUelS5OX3Kx0ikcubUc=",
     "jsModuleNative": {
       "dotnet.native.js": "sha256-juC5sA7gHTLXFEhAKgdM2/RavswpwCtDfjYGsAz2FXg="
     },
@@ -18,7 +18,7 @@
     },
     "coreAssembly": {},
     "assembly": {
-      "BlazorEBMLViewer.wasm": "sha256-QTJsD/WdkAnAUWW8+6RwCeeCP0hfVMj2bF0H3SeQKFM=",
+      "BlazorEBMLViewer.wasm": "sha256-FVK+/eeRH5JaQUHG5qfjJ1nylFp9V+AHRy2BzcEyO6k=",
       "Microsoft.AspNetCore.Components.Forms.wasm": "sha256-vY5lRTKywQMRlsVaHT4oVzaI1J2CpE6F348Sse0icCs=",
       "Microsoft.AspNetCore.Components.wasm": "sha256-jiBMrpEoigrgSBR17e3s0d03E4xuhhaxwxlR14+NXyY=",
       "Microsoft.AspNetCore.Components.Web.wasm": "sha256-kX5s4nkTliU1s0itaH/qC6cjBvavIjBzAm0N8zgNCDc=",
@@ -37,7 +37,7 @@
       "Microsoft.JSInterop.WebAssembly.wasm": "sha256-aqyuCwf1Tsx4FU+9M7zG+jZJZH7d2KbP4hPdHZlKvHw=",
       "Radzen.Blazor.wasm": "sha256-/zvqcDUfEULQjWDwPJDFYECUaYvlpcoALNxpPJMqicI=",
       "SpawnDev.BlazorJS.wasm": "sha256-u4qgxbydgdxA3EpBHsfTRbJY9BxAFAba80lzumWH3z8=",
-      "SpawnDev.EBML.wasm": "sha256-PqhcoZtLP263Thqdv4Cfx4GXHU1Qy6jjcNPifnAy7OQ=",
+      "SpawnDev.EBML.wasm": "sha256-LA9ckKbwdyPkzy27oziqN8U+d6K/5wqeXga482PwSQ4=",
       "System.Collections.Concurrent.wasm": "sha256-FayCn5s/k1B/8xGT7M/Qy92VNMDxRAF7NygNgdrNQP8=",
       "System.Collections.Immutable.wasm": "sha256-S41h0fTzqgFjGhtvTKGy3Q6xgn/hryLGQnWD96lNyCQ=",
       "System.Collections.NonGeneric.wasm": "sha256-Jd+YMaO2umJZt/6AzmxIXifR+5OWNJZaMRrhZIR/pyc=",
