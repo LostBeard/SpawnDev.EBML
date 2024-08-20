@@ -1,6 +1,6 @@
 ﻿namespace SpawnDev.EBML
 {
-    public interface EBMLDocumentEngine
+    public interface IEBMLDocumentEngine
     {
         void Loaded(EBMLDocument document);
     }

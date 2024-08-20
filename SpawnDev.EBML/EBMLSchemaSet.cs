@@ -221,7 +221,7 @@ namespace SpawnDev.EBML
         /// <summary>
         /// Register a document engine that can handle document events and provide additional tools for a document
         /// </summary>
-        public void RegisterDocumentEngine<TEBMLDocumentEngine>() where TEBMLDocumentEngine : EBMLDocumentEngine
+        public void RegisterDocumentEngine<TEBMLDocumentEngine>() where TEBMLDocumentEngine : IEBMLDocumentEngine
         {
             var ebmlDocumentParserInfo = new EBMLDocumentParserInfo(typeof(TEBMLDocumentEngine));
             _EBMLDocumentEngines.Add(ebmlDocumentParserInfo);
@@ -229,7 +229,7 @@ namespace SpawnDev.EBML
         /// <summary>
         /// Register a document engine that can handle document events and provide additional tools for a document
         /// </summary>
-        public void RegisterDocumentEngine<TEBMLDocumentEngine>(Func<EBMLDocument, EBMLDocumentEngine> factory) where TEBMLDocumentEngine : EBMLDocumentEngine
+        public void RegisterDocumentEngine<TEBMLDocumentEngine>(Func<EBMLDocument, IEBMLDocumentEngine> factory) where TEBMLDocumentEngine : IEBMLDocumentEngine
         {
             var ebmlDocumentParserInfo = new EBMLDocumentParserInfo(typeof(TEBMLDocumentEngine), factory);
             _EBMLDocumentEngines.Add(ebmlDocumentParserInfo);
@@ -237,7 +237,7 @@ namespace SpawnDev.EBML
         /// <summary>
         /// Register a document engine that can handle document events and provide additional tools for a document
         /// </summary>
-        public void RegisterDocumentEngine(Type engineType, Func<EBMLDocument, EBMLDocumentEngine> factory) 
+        public void RegisterDocumentEngine(Type engineType, Func<EBMLDocument, IEBMLDocumentEngine> factory) 
         {
             var ebmlDocumentParserInfo = new EBMLDocumentParserInfo(engineType, factory);
             _EBMLDocumentEngines.Add(ebmlDocumentParserInfo);

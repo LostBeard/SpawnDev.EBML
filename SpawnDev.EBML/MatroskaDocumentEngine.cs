@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace SpawnDev.EBML
 {
-    public class MatroskaDocumentEngine : EBMLDocumentEngine
+    public class MatroskaDocumentEngine : IEBMLDocumentEngine
     {
         public readonly static IEnumerable<string> DocTypes = new string[] { "matroska", "webm" };
         public EBMLDocument Document { get; private set; }

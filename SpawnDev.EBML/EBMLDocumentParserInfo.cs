@@ -3,15 +3,15 @@
     public class EBMLDocumentParserInfo
     {
         public Type ParserType { get; private set; }
-        private Func<EBMLDocument, EBMLDocumentEngine>? Factory { get; set; }
-        public EBMLDocumentParserInfo(Type type, Func<EBMLDocument, EBMLDocumentEngine>? factory = null)
+        private Func<EBMLDocument, IEBMLDocumentEngine>? Factory { get; set; }
+        public EBMLDocumentParserInfo(Type type, Func<EBMLDocument, IEBMLDocumentEngine>? factory = null)
         {
             ParserType = type;
             Factory = factory;
         }
-        public EBMLDocumentEngine Create(EBMLDocument doc)
+        public IEBMLDocumentEngine Create(EBMLDocument doc)
         {
-            return Factory != null ? Factory(doc) : (EBMLDocumentEngine)Activator.CreateInstance(ParserType)!;
+            return Factory != null ? Factory(doc) : (IEBMLDocumentEngine)Activator.CreateInstance(ParserType)!;
         }
     }
 }

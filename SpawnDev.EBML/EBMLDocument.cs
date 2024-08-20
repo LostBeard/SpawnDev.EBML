@@ -51,10 +51,10 @@ namespace SpawnDev.EBML
             ElementRemoved += EBMLDocument_ElementRemoved;
             LoadEngines();
         }
-        public Dictionary<EBMLDocumentParserInfo, EBMLDocumentEngine> DocumentEngines { get; private set; }
+        public Dictionary<EBMLDocumentParserInfo, IEBMLDocumentEngine> DocumentEngines { get; private set; }
         void LoadEngines()
         {
-            var ret = new Dictionary<EBMLDocumentParserInfo, EBMLDocumentEngine>();
+            var ret = new Dictionary<EBMLDocumentParserInfo, IEBMLDocumentEngine>();
             DocumentEngines = ret;
             foreach (var engineInfo in SchemaSet.EBMLDocumentEngines)
             {
