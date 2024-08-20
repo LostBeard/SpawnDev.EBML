@@ -198,6 +198,7 @@ namespace SpawnDev.EBML.Elements
             data.Remove(element);
             element.OnChanged -= Child_OnChanged;
             if (element.Parent == this) element.Remove();
+            UpdateCRC();
             ElementRemoved?.Invoke(element);
             DataChanged();
             return element;
