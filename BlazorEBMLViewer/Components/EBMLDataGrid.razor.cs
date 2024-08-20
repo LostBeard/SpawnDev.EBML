@@ -179,9 +179,10 @@ namespace BlazorEBMLViewer.Components
         {
             await RowContextMenu.InvokeAsync(new RowContextMenuArgs(args, element));
         }
-        private async void Document_OnChanged(BaseElement obj)
+        private async void Document_OnChanged(IEnumerable<BaseElement> elements)
         {
-            JS.Log("Document_OnChanged1", obj.Depth, obj.Path);
+            var element = elements.First();
+            //JS.Log("GRID: Document_OnChanged", elements.Count(), element.Depth, element.Name, element.Path);
             if (grid != null)
             {
                 await ReLoadData();

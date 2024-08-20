@@ -205,41 +205,41 @@ namespace SpawnDev.EBML
                 yield return doc;
             }
         }
-        private List<EBMLDocumentParserInfo> _EBMLDocumentEngines { get; } = new List<EBMLDocumentParserInfo>();
+        private List<EBMLDocumentEngineInfo> _EBMLDocumentEngines { get; } = new List<EBMLDocumentEngineInfo>();
         /// <summary>
         /// Document engines can handle document events and provide additional functionality
         /// </summary>
-        public IEnumerable<EBMLDocumentParserInfo> EBMLDocumentEngines => _EBMLDocumentEngines;
+        public IEnumerable<EBMLDocumentEngineInfo> EBMLDocumentEngines => _EBMLDocumentEngines;
         /// <summary>
         /// Register a document engine that can handle document events and provide additional tools for a document
         /// </summary>
         public void RegisterDocumentEngine(Type engineType) 
         {
-            var ebmlDocumentParserInfo = new EBMLDocumentParserInfo(engineType);
+            var ebmlDocumentParserInfo = new EBMLDocumentEngineInfo(engineType);
             _EBMLDocumentEngines.Add(ebmlDocumentParserInfo);
         }
         /// <summary>
         /// Register a document engine that can handle document events and provide additional tools for a document
         /// </summary>
-        public void RegisterDocumentEngine<TEBMLDocumentEngine>() where TEBMLDocumentEngine : IEBMLDocumentEngine
+        public void RegisterDocumentEngine<TEBMLDocumentEngine>() where TEBMLDocumentEngine : EBMLDocumentEngine
         {
-            var ebmlDocumentParserInfo = new EBMLDocumentParserInfo(typeof(TEBMLDocumentEngine));
+            var ebmlDocumentParserInfo = new EBMLDocumentEngineInfo(typeof(TEBMLDocumentEngine));
             _EBMLDocumentEngines.Add(ebmlDocumentParserInfo);
         }
         /// <summary>
         /// Register a document engine that can handle document events and provide additional tools for a document
         /// </summary>
-        public void RegisterDocumentEngine<TEBMLDocumentEngine>(Func<EBMLDocument, IEBMLDocumentEngine> factory) where TEBMLDocumentEngine : IEBMLDocumentEngine
+        public void RegisterDocumentEngine<TEBMLDocumentEngine>(Func<EBMLDocument, EBMLDocumentEngine> factory) where TEBMLDocumentEngine : EBMLDocumentEngine
         {
-            var ebmlDocumentParserInfo = new EBMLDocumentParserInfo(typeof(TEBMLDocumentEngine), factory);
+            var ebmlDocumentParserInfo = new EBMLDocumentEngineInfo(typeof(TEBMLDocumentEngine), factory);
             _EBMLDocumentEngines.Add(ebmlDocumentParserInfo);
         }
         /// <summary>
         /// Register a document engine that can handle document events and provide additional tools for a document
         /// </summary>
-        public void RegisterDocumentEngine(Type engineType, Func<EBMLDocument, IEBMLDocumentEngine> factory) 
+        public void RegisterDocumentEngine(Type engineType, Func<EBMLDocument, EBMLDocumentEngine> factory) 
         {
-            var ebmlDocumentParserInfo = new EBMLDocumentParserInfo(engineType, factory);
+            var ebmlDocumentParserInfo = new EBMLDocumentEngineInfo(engineType, factory);
             _EBMLDocumentEngines.Add(ebmlDocumentParserInfo);
         }
     }

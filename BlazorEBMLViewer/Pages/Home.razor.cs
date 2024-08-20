@@ -9,6 +9,7 @@ using SpawnDev.BlazorJS.JSObjects;
 using SpawnDev.BlazorJS.Toolbox;
 using SpawnDev.EBML;
 using SpawnDev.EBML.Elements;
+using SpawnDev.EBML.Elements;
 using File = SpawnDev.BlazorJS.JSObjects.File;
 
 namespace BlazorEBMLViewer.Pages
@@ -53,6 +54,8 @@ namespace BlazorEBMLViewer.Pages
             StateHasChanged();
             await Task.Delay(50);
             Document = new EBMLDocument(schema.DocType, EBMLSchemaService.SchemaSet, filename);
+            Document.OnElementAdded += Document_OnElementAdded;
+            Document.OnElementRemoved += Document_OnElementRemoved;
             Document.OnChanged += Document_OnChanged;
             MainLayoutService.Title = Document.Filename;
             ActiveContainer = Document;
@@ -60,9 +63,18 @@ namespace BlazorEBMLViewer.Pages
             StateHasChanged();
             await SetPath(@"\\");
         }
-        private void Document_OnChanged(BaseElement obj)
+        private void Document_OnChanged(IEnumerable<BaseElement> elements)
         {
-            JS.Log("Document_OnChanged", obj.Depth, obj.Path);
+            var element = elements.First();
+            //Console.WriteLine($"VIEW: Document_OnChanged: {elements.Count()} {element.Depth} {element.Name} {element.Path}");
+        }
+        private void Document_OnElementRemoved(MasterElement masterElement, BaseElement element)
+        {
+            //Console.WriteLine($"VIEW: Document_OnElementRemoved: {element.Depth} {element.Name} {element.Path}");
+        }
+        private void Document_OnElementAdded(MasterElement masterElement, BaseElement element)
+        {
+            //Console.WriteLine($"VIEW: Document_OnElementAdded: {element.Depth} {element.Name} {element.Path}");
         }
         protected override void OnInitialized()
         {
@@ -167,6 +179,9 @@ namespace BlazorEBMLViewer.Pages
         void CloseDocument()
         {
             if (Document == null) return;
+            Document.OnElementAdded -= Document_OnElementAdded;
+            Document.OnElementRemoved -= Document_OnElementRemoved;
+            Document.OnChanged -= Document_OnChanged;
             Document = null;
             ActiveContainer = null;
             History.Clear();

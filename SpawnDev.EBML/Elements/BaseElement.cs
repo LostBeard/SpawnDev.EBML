@@ -1,5 +1,6 @@
 ﻿using SpawnDev.EBML.Extensions;
 using SpawnDev.EBML.Segments;
+using System.Collections;
 
 namespace SpawnDev.EBML.Elements
 {
@@ -11,21 +12,21 @@ namespace SpawnDev.EBML.Elements
         /// <summary>
         /// The byte offset from the document root
         /// </summary>
-        public long Offset
+        public ulong Offset
         {
             get
             {
                 var index = Index;
                 if (index < 0) return 0;
-                long offset = 0;
+                ulong offset = 0;
                 BaseElement prev = index == 0 ? Parent! : Parent!.Data.ElementAt(index - 1);
                 if (index == 0)
                 {
-                    offset = prev.Offset + (long)Parent!.HeaderSize;
+                    offset = prev.Offset + Parent!.HeaderSize;
                 }
                 else
                 {
-                    offset = prev.Offset + (long)prev.TotalSize;
+                    offset = prev.Offset + prev.TotalSize;
                 }
                 return offset;
             }
@@ -196,7 +197,7 @@ namespace SpawnDev.EBML.Elements
         /// <summary>
         /// Fired when the stream data has been set
         /// </summary>
-        protected virtual void StreamChanged() { }
+        protected virtual void StreamChanged(IEnumerable<BaseElement>? changedElement = null) => throw new NotImplementedException();
         /// <summary>
         /// Constructor used by MasterElements when reading elements from its SegmentSource
         /// </summary>
@@ -252,11 +253,17 @@ namespace SpawnDev.EBML.Elements
         /// <summary>
         /// Firs the OnChanged event
         /// </summary>
-        protected virtual void Changed() => OnChanged?.Invoke(this);
+        internal void Changed(IEnumerable<BaseElement>? changedElement)
+        {
+            changedElement ??= new List<BaseElement>();
+            var changedElements = (List<BaseElement>)changedElement;
+            changedElements.Add(this);
+            OnChanged?.Invoke(changedElements);
+        }
         /// <summary>
         /// Fired when the element data has changed
         /// </summary>
-        public event Action<BaseElement> OnChanged;
+        public event Action<IEnumerable<BaseElement>> OnChanged;
         /// <summary>
         /// Returns the element as a stream
         /// </summary>
@@ -369,26 +376,26 @@ namespace SpawnDev.EBML.Elements
         /// <summary>
         /// Fired when Data has been set
         /// </summary>
-        protected virtual void DataChanged()
+        protected virtual void DataChanged(IEnumerable<BaseElement>? changedElement = null)
         {
             _DataIsValueCreated = true;
             Source = ElementDataSource.Data;
             Modified = true;
             ElementHeader = null;
             _SegmentSource = null;
-            Changed();
+            Changed(changedElement);
         }
         /// <summary>
         /// Fired when SegmentSource has been set
         /// </summary>
-        protected override void StreamChanged()
+        protected override void StreamChanged(IEnumerable<BaseElement>? changedElement = null)
         {
             _DataIsValueCreated = false;
             Source = ElementDataSource.SegmentSource;
             Modified = true;
             ElementHeader = null;
             _Data = default(T)!;
-            Changed();
+            Changed(changedElement);
         }
     }
 }

@@ -9,6 +9,7 @@ namespace BlazorEBMLViewer.Services
         {
             SchemaSet = new EBMLSchemaSet();
             SchemaSet.LoadExecutingAssemblyEmbeddedSchemaXMLs();
+            SchemaSet.RegisterDocumentEngine<MatroskaDocumentEngine>();
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using SpawnDev.EBML.Crc32;
 using SpawnDev.EBML.Segments;
+using System.Xml.Linq;
 
 namespace SpawnDev.EBML.Elements
 {
@@ -9,8 +10,8 @@ namespace SpawnDev.EBML.Elements
         public EBMLSchemaSet SchemaSet { get; }
         public const string TypeName = "master";
         public override string DataString => $"";
-        public event Action<BaseElement> ElementFound;
-        public event Action<BaseElement> ElementRemoved;
+        public event Action<MasterElement, BaseElement> OnElementAdded;
+        public event Action<MasterElement, BaseElement> OnElementRemoved;
         public MasterElement(EBMLSchemaSet schemas, EBMLSchemaElement schemaElement, SegmentSource source, ElementHeader? header = null) : base(schemaElement, source, header)
         {
             SchemaSet = schemas;
@@ -170,17 +171,23 @@ namespace SpawnDev.EBML.Elements
         /// <summary>
         /// Updates the container's CRC-32 element if it has one
         /// </summary>
-        public void UpdateCRC()
+        /// <returns>Returns true if the CRC was updated</returns>
+        public bool UpdateCRC()
         {
             var crcEl = Data.FirstOrDefault(o => o is BinaryElement && o.Name == "CRC-32");
             if (crcEl is BinaryElement binaryElement)
             {
+                Console.WriteLine($"Verifying CRC in: {Path}");
                 var crc = CalculateCRC();
                 if (crc != null && !binaryElement.Data.SequenceEqual(crc))
                 {
+                    Console.WriteLine($"CRC about to update: {Path}");
                     binaryElement.Data = crc;
+                    Console.WriteLine($"CRC updated: {Path}");
+                    return true;
                 }
             }
+            return false;
         }
         public byte[]? CalculateCRC()
         {
@@ -197,9 +204,13 @@ namespace SpawnDev.EBML.Elements
             if (!data.Contains(element)) return element;
             data.Remove(element);
             element.OnChanged -= Child_OnChanged;
+            if (element is MasterElement masterElement)
+            {
+                masterElement.OnElementAdded -= Child_OnElementAdded;
+                masterElement.OnElementRemoved -= Child_ElementRemoved;
+            }
             if (element.Parent == this) element.Remove();
-            UpdateCRC();
-            ElementRemoved?.Invoke(element);
+            OnElementRemoved?.Invoke(this, element);
             DataChanged();
             return element;
         }
@@ -247,10 +258,22 @@ namespace SpawnDev.EBML.Elements
             if (!added) data.Add(element);
             if (element.Parent != this) element.SetParent(this);
             element.OnChanged += Child_OnChanged;
-            UpdateCRC();
-            ElementFound?.Invoke(element);
-            DataChanged();
+            if (element is MasterElement masterElement)
+            {
+                masterElement.OnElementAdded += Child_OnElementAdded;
+                masterElement.OnElementRemoved += Child_ElementRemoved;
+            }
+            OnElementAdded?.Invoke(this, element);
+            DataChanged(new List<BaseElement> { element});
             return element;
+        }
+        private void Child_ElementRemoved(MasterElement masterElement, BaseElement element)
+        {
+            OnElementRemoved?.Invoke(masterElement, element);
+        }
+        private void Child_OnElementAdded(MasterElement masterElement, BaseElement element)
+        {
+            OnElementAdded?.Invoke(masterElement, element);
         }
         public TElement InsertElement<TElement>(TElement element, int index = 0) where TElement : BaseElement
         {
@@ -263,18 +286,18 @@ namespace SpawnDev.EBML.Elements
             data.Insert(0, element);
             if (element.Parent != this) element.SetParent(this);
             element.OnChanged += Child_OnChanged;
-            UpdateCRC();
-            ElementFound?.Invoke(element);
-            DataChanged();
+            if (element is MasterElement masterElement)
+            {
+                masterElement.OnElementAdded += Child_OnElementAdded;
+                masterElement.OnElementRemoved += Child_ElementRemoved;
+            }
+            OnElementAdded?.Invoke(this, element);
+            DataChanged(new List<BaseElement> { element });
             return element;
         }
-        private void Child_OnChanged(BaseElement obj)
+        private void Child_OnChanged(IEnumerable<BaseElement> elements)
         {
-            if (obj.Name != "CRC-32")
-            {
-                UpdateCRC();
-            }
-            DataChanged();
+            DataChanged(elements);
         }
         public string? ReadUTF8(string path)
         {
@@ -364,7 +387,7 @@ namespace SpawnDev.EBML.Elements
             var parsingDocType = DocType ?? EBMLSchemaSet.EBML;
             while (true)
             {
-                BaseElement? ret = null;
+                BaseElement? element = null;
                 var elementHeaderOffset = source.Position;
                 if (source.Position == source.Length)
                 {
@@ -404,32 +427,33 @@ namespace SpawnDev.EBML.Elements
                 }
                 else
                 {
-                    ret = Create(schemaElement, elementSegmentSource, elementHeader);
-                    if (ret == null)
+                    element = Create(schemaElement, elementSegmentSource, elementHeader);
+                    if (element == null)
                     {
-                        ret = new BinaryElement(schemaElement, source, elementHeader);
+                        element = new BinaryElement(schemaElement, source, elementHeader);
                         //ret = new BaseElement(id, schemaElement, elementSegmentSource, elementHeader);
                     }
                 }
-                if (ret == null)
+                if (element == null)
                 {
                     break;
                 }
-                data.Add(ret);
-                ret.SetParent(this);
-                ret.OnChanged += Child_OnChanged;
-                if (ret.Path == @"\EBML")
+                data.Add(element);
+                element.SetParent(this);
+                element.OnChanged += Child_OnChanged;
+                if (element is MasterElement masterElement)
                 {
-                    if (ret is MasterElement ebmlMaster && this is EBMLDocument thisDoc)
+                    masterElement.OnElementAdded += Child_OnElementAdded;
+                    masterElement.OnElementRemoved += Child_ElementRemoved;
+                    if (element.Path == @"\EBML")
                     {
-                        var newDocType = ebmlMaster.ReadString("DocType");
+                        var newDocType = masterElement.ReadString("DocType");
                         if (!string.IsNullOrEmpty(newDocType))
                         {
                             parsingDocType = newDocType;
                         }
                     }
                 }
-                ElementFound?.Invoke(ret);
                 SegmentSource.Position = (long)elementDataSizeMax + elementDataOffset;
             }
             if (isUnknownSize)

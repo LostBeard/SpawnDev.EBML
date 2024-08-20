@@ -6,7 +6,7 @@ namespace SpawnDev.EBML
     /// <summary>
     /// An EBML document
     /// </summary>
-    public class EBMLDocument : MasterElement
+    public class EBMLDocument : MasterElement, IDisposable
     {
         /// <summary>
         /// Returns tru if this element is a document
@@ -35,45 +35,67 @@ namespace SpawnDev.EBML
         public EBMLDocument(Stream stream, EBMLSchemaSet schemas, string? filename = null) : base(schemas, new StreamSegment(stream))
         {
             if (!string.IsNullOrEmpty(filename)) Filename = filename;
+            OnChanged += Document_OnChanged;
+            OnElementAdded += Document_OnElementAdded;
+            OnElementRemoved += Document_OnElementRemoved;
             LoadEngines();
         }
         public EBMLDocument(SegmentSource stream, EBMLSchemaSet schemas, string? filename = null) : base(schemas, stream)
         {
             if (!string.IsNullOrEmpty(filename)) Filename = filename;
+            OnChanged += Document_OnChanged;
+            OnElementAdded += Document_OnElementAdded;
+            OnElementRemoved += Document_OnElementRemoved;
             LoadEngines();
         }
         public EBMLDocument(string docType, EBMLSchemaSet schemas, string? filename = null) : base(schemas)
         {
             if (!string.IsNullOrEmpty(filename)) Filename = filename;
             CreateDocument(docType);
-            OnChanged += EBMLDocument_OnChanged;
-            ElementFound += EBMLDocument_ElementFound;
-            ElementRemoved += EBMLDocument_ElementRemoved;
+            OnChanged += Document_OnChanged;
+            OnElementAdded += Document_OnElementAdded;
+            OnElementRemoved += Document_OnElementRemoved;
             LoadEngines();
         }
-        public Dictionary<EBMLDocumentParserInfo, IEBMLDocumentEngine> DocumentEngines { get; private set; }
+        /// <summary>
+        /// List of loaded document engines
+        /// </summary>
+        public Dictionary<EBMLDocumentEngineInfo, EBMLDocumentEngine> DocumentEngines { get; private set; }
         void LoadEngines()
         {
-            var ret = new Dictionary<EBMLDocumentParserInfo, IEBMLDocumentEngine>();
+            var ret = new Dictionary<EBMLDocumentEngineInfo, EBMLDocumentEngine>();
             DocumentEngines = ret;
             foreach (var engineInfo in SchemaSet.EBMLDocumentEngines)
             {
                 var engine = engineInfo.Create(this);
-                engine.Loaded(this);
                 ret.Add(engineInfo, engine);
             }
         }
-        private void EBMLDocument_ElementRemoved(BaseElement ret)
+        private void Document_OnChanged(IEnumerable<BaseElement> elements)
         {
-
+            var element = elements.First();
+            Console.WriteLine($"DOC: Document_OnChanged: {elements.Count()} {element.Name} {element.Path}");
+            foreach (var el in elements)
+            {
+                if (el is MasterElement masterElement)
+                {
+                    var changed = masterElement.UpdateCRC();
+                    if (changed)
+                    {
+                        // we modified an element, the OnChanged event will fire again
+                        // the CRC check will be continued when it is fired next
+                        break;
+                    }
+                }
+            }
         }
-        private void EBMLDocument_ElementFound(BaseElement ret)
+        private void Document_OnElementAdded(MasterElement masterElement, BaseElement element)
         {
-
+            Console.WriteLine($"DOC: Document_OnElementAdded: {element.Name} {element.Path}");
         }
-        private void EBMLDocument_OnChanged(BaseElement ret)
+        private void Document_OnElementRemoved(MasterElement masterElement, BaseElement element)
         {
-
+            Console.WriteLine($"DOC: Document_OnElementRemoved: {element.Depth} {masterElement.Path}\\{element.Name}");
         }
         /// <summary>
         /// This initializes a very minimal EBML document based on the current DocType
@@ -89,6 +111,18 @@ namespace SpawnDev.EBML
                 ebmlHeader.AddUint("DocTypeVersion", version);
                 // Adds any required root level containers
                 AddMissingContainers();
+            }
+        }
+        /// <summary>
+        /// Release resources
+        /// </summary>
+        public void Dispose()
+        {
+            var engines = DocumentEngines;
+            DocumentEngines.Clear();
+            foreach (var engine in engines.Values)
+            {
+                if (engine is IDisposable disposable) disposable.Dispose();
             }
         }
     }
