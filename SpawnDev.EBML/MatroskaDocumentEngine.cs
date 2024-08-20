@@ -41,6 +41,7 @@ namespace SpawnDev.EBML
         bool UpdatingSeekHead = false;
         void UpdateSeekHead()
         {
+            if (!DocTypeSupported) return;
             if (!VerifySeekHeadOnChange && !UpdateSeekHeadOnChange)
             {
                 return;
