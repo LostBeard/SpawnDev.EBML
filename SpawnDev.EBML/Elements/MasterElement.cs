@@ -217,7 +217,6 @@ namespace SpawnDev.EBML.Elements
             {
                 return element;
             }
-            element.OnChanged += Child_OnChanged;
             var added = false;
             if (element.SchemaElement.Position != null)
             {
@@ -244,13 +243,10 @@ namespace SpawnDev.EBML.Elements
                     // TODO
                 }
             }
-            if (element.Name == "CRC-32" && element is BinaryElement binaryElement)
-            {
-                var crc = CalculateCRC();
-                if (crc != null) binaryElement.Data = crc;
-            }
             if (!added) data.Add(element);
             if (element.Parent != this) element.SetParent(this);
+            element.OnChanged += Child_OnChanged;
+            UpdateCRC();
             ElementFound?.Invoke(element);
             DataChanged();
             return element;
@@ -261,10 +257,12 @@ namespace SpawnDev.EBML.Elements
             {
                 throw new ArgumentNullException(nameof(element));
             }
-            element.SetParent(this);
-            element.OnChanged += Child_OnChanged;
             var data = (List<BaseElement>)Data;
+            if (data.Contains(element)) return element;
             data.Insert(0, element);
+            if (element.Parent != this) element.SetParent(this);
+            element.OnChanged += Child_OnChanged;
+            UpdateCRC();
             ElementFound?.Invoke(element);
             DataChanged();
             return element;
@@ -416,9 +414,9 @@ namespace SpawnDev.EBML.Elements
                 {
                     break;
                 }
+                data.Add(ret);
                 ret.SetParent(this);
                 ret.OnChanged += Child_OnChanged;
-                data.Add(ret);
                 if (ret.Path == @"\EBML")
                 {
                     if (ret is MasterElement ebmlMaster && this is EBMLDocument thisDoc)
