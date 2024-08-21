@@ -7,28 +7,28 @@ namespace SpawnDev.EBML.Elements
     public class MasterElement : BaseElement<IEnumerable<BaseElement>>
     {
         static Crc32Algorithm CRC = new Crc32Algorithm(false);
-        public SchemaSet SchemaSet { get; }
+        public EBMLParser SchemaSet { get; }
         public const string TypeName = "master";
         public override string DataString => $"";
         public event Action<MasterElement, BaseElement> OnElementAdded;
         public event Action<MasterElement, BaseElement> OnElementRemoved;
-        public MasterElement(SchemaSet schemas, SchemaElement schemaElement, SegmentSource source, ElementHeader? header = null) : base(schemaElement, source, header)
+        public MasterElement(EBMLParser schemas, SchemaElement schemaElement, SegmentSource source, ElementHeader? header = null) : base(schemaElement, source, header)
         {
             SchemaSet = schemas;
         }
-        public MasterElement(SchemaSet schemas, SegmentSource source, ElementHeader? header = null) : base(null, source, header)
+        public MasterElement(EBMLParser schemas, SegmentSource source, ElementHeader? header = null) : base(null, source, header)
         {
             SchemaSet = schemas;
         }
-        public MasterElement(SchemaSet schemas, SchemaElement schemaElement) : base(schemaElement, new List<BaseElement>())
+        public MasterElement(EBMLParser schemas, SchemaElement schemaElement) : base(schemaElement, new List<BaseElement>())
         {
             SchemaSet = schemas;
         }
-        public MasterElement(SchemaSet schemas, ulong id) : base(id, new List<BaseElement>())
+        public MasterElement(EBMLParser schemas, ulong id) : base(id, new List<BaseElement>())
         {
             SchemaSet = schemas;
         }
-        public MasterElement(SchemaSet schemas) : base(0, new List<BaseElement>())
+        public MasterElement(EBMLParser schemas) : base(0, new List<BaseElement>())
         {
             SchemaSet = schemas;
         }
@@ -391,7 +391,7 @@ namespace SpawnDev.EBML.Elements
             var data = new List<BaseElement>();
             _data = data;
             var isUnknownSize = _ElementHeader != null && _ElementHeader.Size == null;
-            var parsingDocType = DocType ?? SchemaSet.EBML;
+            var parsingDocType = DocType ?? EBMLParser.EBML;
             while (true)
             {
                 BaseElement? element = null;

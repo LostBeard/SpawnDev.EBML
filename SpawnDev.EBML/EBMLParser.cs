@@ -6,7 +6,7 @@ namespace SpawnDev.EBML
     /// <summary>
     /// This class can parse EBML schema XML and use the parsed schemas to parse, edit, and create EBML documents
     /// </summary>
-    public class SchemaSet
+    public class EBMLParser
     {
         /// <summary>
         /// EBML string "ebml"
@@ -23,6 +23,18 @@ namespace SpawnDev.EBML
         /// The included Matroska document engine can auto-populate SeekHead elements and keep the data in a SeekHead element up to date if a document is modified.<br/>
         /// </summary>
         public IEnumerable<DocumentEngineInfo> DocumentEngines => _EBMLDocumentEngines;
+        /// <summary>
+        /// Create a new ShemaSet and load defaults parser configuration
+        /// </summary>
+        /// <param name="defaultConfig">If true, all included schemas and document engines will be loaded</param>
+        public EBMLParser(bool defaultConfig = true)
+        {
+            if (defaultConfig)
+            {
+                LoadDefaultSchemas();
+                RegisterDocumentEngine<MatroskaDocumentEngine>();
+            }
+        }
         /// <summary>
         /// Loads schema XMLs that are included with SpawnDev.EBML (currently ebml, matroska, and webm)
         /// </summary>

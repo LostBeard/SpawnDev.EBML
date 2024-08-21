@@ -58,7 +58,7 @@ namespace SpawnDev.EBML.Elements
         /// <summary>
         /// Element DocType
         /// </summary>
-        public virtual string? DocType => SchemaElement?.DocType ?? Parent?.DocType ?? SchemaSet.EBML;
+        public virtual string? DocType => SchemaElement?.DocType ?? Parent?.DocType ?? EBMLParser.EBML;
         /// <summary>
         /// Element parent
         /// </summary>

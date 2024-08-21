@@ -27,7 +27,7 @@ namespace SpawnDev.EBML
         /// <summary>
         /// Returns \EBML\DocType or null
         /// </summary>
-        public override string DocType => EBMLHeader?.ReadString("DocType") ?? SchemaSet.EBML;
+        public override string DocType => EBMLHeader?.ReadString("DocType") ?? EBMLParser.EBML;
         /// <summary>
         /// Returns the EBML body or null if not found
         /// </summary>
@@ -38,7 +38,7 @@ namespace SpawnDev.EBML
         /// <param name="stream"></param>
         /// <param name="schemas"></param>
         /// <param name="filename"></param>
-        public Document(Stream stream, SchemaSet schemas, string? filename = null) : base(schemas, new StreamSegment(stream))
+        public Document(Stream stream, EBMLParser schemas, string? filename = null) : base(schemas, new StreamSegment(stream))
         {
             if (!string.IsNullOrEmpty(filename)) Filename = filename;
             OnChanged += Document_OnChanged;
@@ -49,7 +49,7 @@ namespace SpawnDev.EBML
         /// <summary>
         /// Creates a new instance
         /// </summary>
-        public Document(SegmentSource stream, SchemaSet schemas, string? filename = null) : base(schemas, stream)
+        public Document(SegmentSource stream, EBMLParser schemas, string? filename = null) : base(schemas, stream)
         {
             if (!string.IsNullOrEmpty(filename)) Filename = filename;
             OnChanged += Document_OnChanged;
@@ -60,7 +60,7 @@ namespace SpawnDev.EBML
         /// <summary>
         /// Creates a new instance
         /// </summary>
-        public Document(string docType, SchemaSet schemas, string? filename = null) : base(schemas)
+        public Document(string docType, EBMLParser schemas, string? filename = null) : base(schemas)
         {
             if (!string.IsNullOrEmpty(filename)) Filename = filename;
             CreateDocument(docType);
