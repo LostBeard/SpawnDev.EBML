@@ -10,7 +10,7 @@
 
 ## Version 2 changes
 - The library now uses string paths instead of the Enums found in version 1.
-- The library now uses (and includes) XML schema files:  
+- The library now uses (and includes) EBML XML schema files:  
 - [EBML](https://github.com/ietf-wg-cellar/ebml-specification/blob/master/ebml.xml)
 - [Matroska](https://github.com/ietf-wg-cellar/matroska-specification/blob/master/ebml_matroska.xml)  
 
