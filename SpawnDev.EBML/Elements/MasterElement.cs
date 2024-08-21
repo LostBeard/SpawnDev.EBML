@@ -264,7 +264,7 @@ namespace SpawnDev.EBML.Elements
                 masterElement.OnElementRemoved += Child_ElementRemoved;
             }
             OnElementAdded?.Invoke(this, element);
-            DataChanged(new List<BaseElement> { element});
+            DataChanged(new List<BaseElement> { element });
             return element;
         }
         private void Child_ElementRemoved(MasterElement masterElement, BaseElement element)
@@ -355,6 +355,13 @@ namespace SpawnDev.EBML.Elements
             }
             return ret;
         }
+        public BaseElement? GetContainer(ulong id) => GetElement<MasterElement>(id);
+        public IEnumerable<MasterElement> GetContainers(ulong id) => GetElements<MasterElement>(id);
+        public TElement? GetElement<TElement>(ulong id) where TElement : BaseElement => Data.FirstOrDefault(o => o.Id == id && o is TElement) as TElement;
+        public IEnumerable<TElement> GetElements<TElement>(ulong id) where TElement : BaseElement => Data.Where(o => o.Id == id && o is TElement).Cast<TElement>().ToList();
+        public BaseElement? GetElement(ulong id) => Data.FirstOrDefault(o => o.Id == id);
+        public IEnumerable<BaseElement> GetElements(ulong id) => Data.Where(o => o.Id == id).ToList();
+        public BaseElement? GetElement(string path) => GetElements(path).FirstOrDefault();
         public TElement? GetElement<TElement>(string path) where TElement : BaseElement => GetElements<TElement>(path).FirstOrDefault();
         public IEnumerable<TElement> GetElements<TElement>(string path) where TElement : BaseElement
         {
