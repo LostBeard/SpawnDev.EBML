@@ -18,7 +18,6 @@ namespace SpawnDev.EBML
         /// </summary>
         public MatroskaDocumentEngine(Document document) : base(document)
         {
-            Console.WriteLine($"MatroskaDocumentEngine(): {Document.DocType}");
             Document.OnElementAdded += Document_OnElementAdded;
             Document.OnElementRemoved += Document_OnElementRemoved;
             Document.OnChanged += Document_OnChanged;

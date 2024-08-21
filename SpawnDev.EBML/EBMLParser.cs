@@ -70,7 +70,7 @@ namespace SpawnDev.EBML
             while (startPos < stream.Length)
             {
                 stream.Position = startPos;
-                var doc = new Document(stream, this);
+                var doc = new Document(this, stream);
                 if (doc.Data.Count() == 0)
                 {
                     yield break;
@@ -91,7 +91,7 @@ namespace SpawnDev.EBML
             while (startPos < stream.Length)
             {
                 stream.Position = startPos;
-                var doc = new Document(stream, this);
+                var doc = new Document(this, stream);
                 if (doc.Data.Count() == 0)
                 {
                     break;

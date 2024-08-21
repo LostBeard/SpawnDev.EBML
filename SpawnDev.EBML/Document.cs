@@ -38,7 +38,7 @@ namespace SpawnDev.EBML
         /// <param name="stream"></param>
         /// <param name="schemas"></param>
         /// <param name="filename"></param>
-        public Document(Stream stream, EBMLParser schemas, string? filename = null) : base(schemas, new StreamSegment(stream))
+        public Document(EBMLParser schemas, Stream stream, string? filename = null) : base(schemas, new StreamSegment(stream))
         {
             if (!string.IsNullOrEmpty(filename)) Filename = filename;
             OnChanged += Document_OnChanged;
@@ -49,7 +49,7 @@ namespace SpawnDev.EBML
         /// <summary>
         /// Creates a new instance
         /// </summary>
-        public Document(SegmentSource stream, EBMLParser schemas, string? filename = null) : base(schemas, stream)
+        public Document(EBMLParser schemas, SegmentSource segmentSource, string? filename = null) : base(schemas, segmentSource)
         {
             if (!string.IsNullOrEmpty(filename)) Filename = filename;
             OnChanged += Document_OnChanged;
@@ -60,7 +60,7 @@ namespace SpawnDev.EBML
         /// <summary>
         /// Creates a new instance
         /// </summary>
-        public Document(string docType, EBMLParser schemas, string? filename = null) : base(schemas)
+        public Document(EBMLParser schemas, string docType, string? filename = null) : base(schemas)
         {
             if (!string.IsNullOrEmpty(filename)) Filename = filename;
             CreateDocument(docType);
