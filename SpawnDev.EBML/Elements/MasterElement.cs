@@ -1,6 +1,5 @@
 ﻿using SpawnDev.EBML.Crc32;
 using SpawnDev.EBML.Segments;
-using System.Xml.Linq;
 
 namespace SpawnDev.EBML.Elements
 {
@@ -317,26 +316,6 @@ namespace SpawnDev.EBML.Elements
             if (stringElement is StringElement stringASCII) return stringASCII.Data;
             throw new Exception("Unknown type");
         }
-        //public ulong CalculatedSize
-        //{
-        //    get
-        //    {
-        //        ulong ret = 0;
-        //        var children = Data;
-        //        foreach (var child in children)
-        //        {
-        //            if (child is MasterElement masterElement)
-        //            {
-        //                ret += masterElement.CalculatedSize;
-        //            }
-        //            else
-        //            {
-        //                ret += child.TotalSize;
-        //            }
-        //        }
-        //        return ret;
-        //    }
-        //}
         /// <summary>
         /// Returns all children recursively
         /// </summary>
