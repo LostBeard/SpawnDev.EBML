@@ -13,7 +13,7 @@ if (document != null)
 }
 
 // Create a new matroska EBML file
-var matroskaDoc = new Document(ebmlParser, "matroska");
+var matroskaDoc = ebmlParser.CreateDocument("matroska");
 Console.WriteLine($"DocType: {matroskaDoc.DocType}");
 
 // ...

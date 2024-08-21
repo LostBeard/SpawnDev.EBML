@@ -103,6 +103,12 @@ namespace SpawnDev.EBML
             return null;
         }
         /// <summary>
+        /// Creates a new EBML document with the specified DocType
+        /// </summary>
+        /// <param name="docType"></param>
+        /// <returns></returns>
+        public Document CreateDocument(string docType) => new Document(this, docType);
+        /// <summary>
         /// Returns the .Net that represents the specified elementType:<br/>
         /// - master<br/>
         /// - uinteger<br/>
