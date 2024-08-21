@@ -11,27 +11,27 @@
 # Version 2
 Version 2 supports EBML schema XML documents and uses string paths instead of the Enums found in version 1.
 
-- Version 2 docs coming soon.
+
 
 ```cs
 using SpawnDev.EBML;
 
-// Create the EBML schema set
-var schemaSet = new SchemaSet();
+// Create the EBML parser with default configuration
+// default configuration supports matroska and webm reading and modification
+var ebmlParser = new EBMLParser();
 
-// Load the embedded schema XMLs (ebml, matroska, and webm)
-schemaSet.LoadDefaultSchemas();
-
-
-schemaSet.RegisterDocumentEngine<MatroskaDocumentEngine>();
 // get a stream containing an EBML document (or multiple documents)
 using var fileStream = File.Open(@"TestData\Big_Buck_Bunny_180 10s.webm", FileMode.Open);
+
 // parse the EBML document stream (ParseDocuments can be used to parse all documents in the stream)
-var document = schemaSet.ParseDocument(fileStream);
+var document = ebmlParser.ParseDocument(fileStream);
 if (document != null)
 {
     Console.WriteLine($"DocType: {document.DocType}");
 }
-var nmt = true;
+
+// Create a new matroska EBML file
+var matroskaDoc = new Document(ebmlParser, "matroska");
+Console.WriteLine($"DocType: {matroskaDoc.DocType}");
 
 ```
