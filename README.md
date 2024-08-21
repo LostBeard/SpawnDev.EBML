@@ -7,8 +7,16 @@
 ## Demo
 [Blazor EBML Editor](https://lostbeard.github.io/SpawnDev.EBML/)
 
+
+The library now uses (and includes) XML schema files:  
+- [EBML](https://github.com/ietf-wg-cellar/ebml-specification/blob/master/ebml.xml)
+- [Matroska](https://github.com/ietf-wg-cellar/matroska-specification/blob/master/ebml_matroska.xml)  
+
+Note: The Matroska schema xml is currently also used for WebM ebml documents.
+
 ## Usage
 - Version 2 (current) supports EBML schema XML documents and uses string paths instead of the Enums found in version 1.
+
 
 ```cs
 using SpawnDev.EBML;
