@@ -69,6 +69,28 @@ namespace SpawnDev.EBML
             }
         }
         /// <summary>
+        /// parses a single EBML document from the stream
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <returns></returns>
+        public Document? ParseDocument(Stream stream)
+        {
+            var startPos = stream.Position;
+            while (startPos < stream.Length)
+            {
+                stream.Position = startPos;
+                var doc = new Document(stream, this);
+                if (doc.Data.Count() == 0)
+                {
+                    break;
+                }
+                var docSize = doc.TotalSize;
+                startPos = startPos + (long)docSize;
+                return doc;
+            }
+            return null;
+        }
+        /// <summary>
         /// Returns the .Net that represents the specified elementType:<br/>
         /// - master<br/>
         /// - uinteger<br/>
