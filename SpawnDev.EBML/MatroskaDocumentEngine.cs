@@ -76,7 +76,7 @@ namespace SpawnDev.EBML
         /// <summary>
         /// If AutoPopulateSeekHead == true these Top level elements will have Seeks created for them if they do not already exist
         /// </summary>
-        public List<string> DefaultSeekHeadTargets = new List<string> { "Info", "Tracks", "Chapters", "Tags", "Cues", "Attachments" };
+        public List<string> DefaultSeekHeadTargets = new List<string> { "Info", "Tracks", "Chapters", "Cues", "Attachments" };
         public bool UpdateSeekHeadOnChange { get; set; } = true;
         public bool VerifySeekHeadOnChange { get; set; } = true;
         bool UpdatingSeekHead = false;
@@ -160,43 +160,6 @@ namespace SpawnDev.EBML
                         }
                     }
                 }
-                //Console.WriteLine("Checking SeekHead");
-                //var dataWasModified = false;
-                //foreach (var seek in seeks)
-                //{
-                //    var seekIdEl = seek.GetElement<BinaryElement>("SeekID");
-                //    if (seekIdEl == null) continue;
-                //    var seekPositionEl = seek.GetElement<UintElement>("SeekPosition");
-                //    if (seekPositionEl == null) continue;
-                //    var seekId = EBMLConverter.ReadEBMLUInt(seekIdEl.Data);
-                //    var seekPosition = seekPositionEl.Data;
-                //    var segmentPosition = seekPosition + (ulong)segmentStart;
-                //    var targetElement = segmentElement.Data.FirstOrDefault(o => o.Id == seekId);
-                //    if (targetElement == null)
-                //    {
-                //        Console.WriteLine("Warning: Seek target not found!");
-                //        continue;
-                //    }
-                //    var targetCurrentPosition = targetElement.Offset;
-                //    if (segmentPosition != targetCurrentPosition)
-                //    {
-                //        var diff = (long)segmentPosition - (long)targetCurrentPosition;
-                //        Console.WriteLine($"Warning: Seek expected position {segmentPosition}, real position is {targetCurrentPosition}, diff: {diff}");
-                //        // update seek
-                //        // break due to modifying the document?
-                //        if (UpdateSeekHeadOnChange)
-                //        {
-                //            seekPositionEl.Data = targetCurrentPosition;
-                //            Console.WriteLine($"Notice: Seek updated");
-                //            dataWasModified = true;
-                //            break;
-                //        }
-                //    }
-                //    else
-                //    {
-                //        Console.WriteLine("Target position confirmed");
-                //    }
-                //}
             }
             finally
             {
