@@ -11,4 +11,10 @@
     <ProjectReference Include="..\SpawnDev.EBML\SpawnDev.EBML.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="TestData\Big_Buck_Bunny_180 10s.webm">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

@@ -6,7 +6,7 @@ namespace SpawnDev.EBML
     /// <summary>
     /// An EBML document
     /// </summary>
-    public class EBMLDocument : MasterElement, IDisposable
+    public class Document : MasterElement, IDisposable
     {
         /// <summary>
         /// Returns tru if this element is a document
@@ -27,12 +27,18 @@ namespace SpawnDev.EBML
         /// <summary>
         /// Returns \EBML\DocType or null
         /// </summary>
-        public override string DocType => EBMLHeader?.ReadString("DocType") ?? EBMLSchemaSet.EBML;
+        public override string DocType => EBMLHeader?.ReadString("DocType") ?? SchemaSet.EBML;
         /// <summary>
         /// Returns the EBML body or null if not found
         /// </summary>
         public MasterElement? EBMLBody => Data.FirstOrDefault(o => o.Name != "EBML" && o is MasterElement) as MasterElement;
-        public EBMLDocument(Stream stream, EBMLSchemaSet schemas, string? filename = null) : base(schemas, new StreamSegment(stream))
+        /// <summary>
+        /// Creates a new instance
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <param name="schemas"></param>
+        /// <param name="filename"></param>
+        public Document(Stream stream, SchemaSet schemas, string? filename = null) : base(schemas, new StreamSegment(stream))
         {
             if (!string.IsNullOrEmpty(filename)) Filename = filename;
             OnChanged += Document_OnChanged;
@@ -40,7 +46,10 @@ namespace SpawnDev.EBML
             OnElementRemoved += Document_OnElementRemoved;
             LoadEngines();
         }
-        public EBMLDocument(SegmentSource stream, EBMLSchemaSet schemas, string? filename = null) : base(schemas, stream)
+        /// <summary>
+        /// Creates a new instance
+        /// </summary>
+        public Document(SegmentSource stream, SchemaSet schemas, string? filename = null) : base(schemas, stream)
         {
             if (!string.IsNullOrEmpty(filename)) Filename = filename;
             OnChanged += Document_OnChanged;
@@ -48,7 +57,10 @@ namespace SpawnDev.EBML
             OnElementRemoved += Document_OnElementRemoved;
             LoadEngines();
         }
-        public EBMLDocument(string docType, EBMLSchemaSet schemas, string? filename = null) : base(schemas)
+        /// <summary>
+        /// Creates a new instance
+        /// </summary>
+        public Document(string docType, SchemaSet schemas, string? filename = null) : base(schemas)
         {
             if (!string.IsNullOrEmpty(filename)) Filename = filename;
             CreateDocument(docType);
@@ -60,12 +72,12 @@ namespace SpawnDev.EBML
         /// <summary>
         /// List of loaded document engines
         /// </summary>
-        public Dictionary<EBMLDocumentEngineInfo, EBMLDocumentEngine> DocumentEngines { get; private set; }
+        public Dictionary<DocumentEngineInfo, DocumentEngine> DocumentEngines { get; private set; } = new Dictionary<DocumentEngineInfo, DocumentEngine>();
         void LoadEngines()
         {
-            var ret = new Dictionary<EBMLDocumentEngineInfo, EBMLDocumentEngine>();
+            var ret = new Dictionary<DocumentEngineInfo, DocumentEngine>();
             DocumentEngines = ret;
-            foreach (var engineInfo in SchemaSet.EBMLDocumentEngines)
+            foreach (var engineInfo in SchemaSet.DocumentEngines)
             {
                 var engine = engineInfo.Create(this);
                 ret.Add(engineInfo, engine);

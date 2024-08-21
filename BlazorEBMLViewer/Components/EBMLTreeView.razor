@@ -10,9 +10,9 @@
 @code {
 
     [Parameter]
-    public EBMLDocument? Document { get; set; }
+    public SpawnDev.EBML.Document? Document { get; set; }
 
-    EBMLDocument? _Document = null;
+        SpawnDev.EBML.Document? _Document = null;
 
     IEnumerable<BaseElement> entries;
     protected override void OnInitialized()

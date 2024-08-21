@@ -18,7 +18,7 @@ namespace BlazorEBMLViewer.Services
         {
 
         }
-        public string GetElementTypeIcon(EBMLSchemaElement? elementType)
+        public string GetElementTypeIcon(SchemaElement? elementType)
         {
             return GetElementTypeIcon(elementType?.Type);
         }

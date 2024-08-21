@@ -6,7 +6,7 @@ namespace SpawnDev.EBML
     /// <summary>
     /// Matroska EBML document engine
     /// </summary>
-    public class MatroskaDocumentEngine : EBMLDocumentEngine
+    public class MatroskaDocumentEngine : DocumentEngine
     {
         /// <summary>
         /// DocTypes this engine supports
@@ -16,7 +16,7 @@ namespace SpawnDev.EBML
         /// This constructor can take an existing EBMLDocument and parse it<br/>
         /// This is used by the generic Parser
         /// </summary>
-        public MatroskaDocumentEngine(EBMLDocument document) : base(document)
+        public MatroskaDocumentEngine(Document document) : base(document)
         {
             Console.WriteLine($"MatroskaDocumentEngine(): {Document.DocType}");
             Document.OnElementAdded += Document_OnElementAdded;
@@ -99,10 +99,10 @@ namespace SpawnDev.EBML
                 if (GetSeeks(out var segmentElement, out var segmentStart, out var seekHeadElement, out var seeks))
                 {
                     var requiredTargets = DefaultSeekHeadTargets.ToList();
-                    var seekSchema = Document.SchemaSet.GetEBMLSchemaElement("Seek", Document.DocType);
+                    var seekSchema = Document.SchemaSet.GetElement("Seek", Document.DocType);
                     if (seekSchema == null) return;
-                    var seekIDSchema = Document.SchemaSet.GetEBMLSchemaElement("SeekID", Document.DocType);
-                    var seekPositionSchema = Document.SchemaSet.GetEBMLSchemaElement("SeekPosition", Document.DocType);
+                    var seekIDSchema = Document.SchemaSet.GetElement("SeekID", Document.DocType);
+                    var seekPositionSchema = Document.SchemaSet.GetElement("SeekPosition", Document.DocType);
                     if (seekIDSchema == null || seekPositionSchema == null)
                     {
                         return;

@@ -17,7 +17,7 @@ namespace BlazorEBMLViewer.Pages
     public partial class Home : IDisposable
     {
         public bool DocumentBusy { get; set; }
-        public EBMLDocument? Document { get; set; }
+        public SpawnDev.EBML.Document? Document { get; set; }
         public string? ActiveContainerTypeName => ActiveContainer?.GetType().Name;
         public MasterElement? ActiveContainer { get; set; }
         public string Path => ActiveContainer?.Path ?? "";
@@ -46,14 +46,14 @@ namespace BlazorEBMLViewer.Pages
         {
             StateHasChanged();
         }
-        async Task NewDocument(EBMLSchema schema)
+        async Task NewDocument(Schema schema)
         {
             var filename = "NewDocument.ebml";
             CloseDocument();
             DocumentBusy = true;
             StateHasChanged();
             await Task.Delay(50);
-            Document = new EBMLDocument(schema.DocType, EBMLSchemaService.SchemaSet, filename);
+            Document = new SpawnDev.EBML.Document(schema.DocType, EBMLSchemaService.SchemaSet, filename);
             Document.OnElementAdded += Document_OnElementAdded;
             Document.OnElementRemoved += Document_OnElementRemoved;
             Document.OnChanged += Document_OnChanged;
@@ -122,7 +122,7 @@ namespace BlazorEBMLViewer.Pages
             var ret = new List<ContextMenuItem>();
             if (ActiveContainer == null) return ret;
             var addables = ActiveContainer.GetAddableElementSchemas(true);
-            var missing = new List<EBMLSchemaElement>();
+            var missing = new List<SchemaElement>();
             foreach (var addable in addables)
             {
                 var requiresAdd = false;
@@ -160,14 +160,14 @@ namespace BlazorEBMLViewer.Pages
         {
             if (ActiveContainer == null) return;
             ContextMenuService.Close();
-            if (args.Value is List<EBMLSchemaElement> missing)
+            if (args.Value is List<SchemaElement> missing)
             {
                 foreach (var addable in missing)
                 {
                     ActiveContainer.AddElement(addable);
                 }
             }
-            else if (args.Value is EBMLSchemaElement addable)
+            else if (args.Value is SchemaElement addable)
             {
                 ActiveContainer.AddElement(addable);
             }
@@ -212,7 +212,7 @@ namespace BlazorEBMLViewer.Pages
             await Task.Delay(50);
             var arrayBuffer = await file.ArrayBuffer();
             var fileStream = new ArrayBufferStream(arrayBuffer);
-            Document = new EBMLDocument(fileStream, EBMLSchemaService.SchemaSet, file.Name);
+            Document = new SpawnDev.EBML.Document(fileStream, EBMLSchemaService.SchemaSet, file.Name);
             MainLayoutService.Title = file.Name;
             ActiveContainer = Document;
             DocumentBusy = false;
@@ -284,7 +284,7 @@ namespace BlazorEBMLViewer.Pages
                 using var f = await file.GetFile();
                 using var arrayBuffer = await f.ArrayBuffer();
                 var fileStream = new ArrayBufferStream(arrayBuffer);
-                Document = new EBMLDocument(fileStream, EBMLSchemaService.SchemaSet, file.Name);
+                Document = new SpawnDev.EBML.Document(fileStream, EBMLSchemaService.SchemaSet, file.Name);
                 MainLayoutService.Title = file.Name;
                 ActiveContainer = Document;
                 DocumentBusy = false;

@@ -22,7 +22,7 @@ namespace BlazorEBMLViewer.Components
         public bool DocumentBusy { get; set; }
 
         [CascadingParameter]
-        public EBMLDocument? Document { get; set; }
+        public Document? Document { get; set; }
 
         [CascadingParameter]
         public MasterElement? ActiveContainer { get; set; }

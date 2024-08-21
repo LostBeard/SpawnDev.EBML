@@ -1,15 +1,13 @@
 ﻿// See https://aka.ms/new-console-template for more information
 using SpawnDev.EBML;
 
-Console.WriteLine("Hello, World!");
-
-
-var schemaSet = new EBMLSchemaSet();
-schemaSet.LoadExecutingAssemblyEmbeddedSchemaXMLs();
+// Create the EBML schema set
+var schemaSet = new SchemaSet();
+// Load the embedded schema XMLs (ebml, matroska, and webm)
+schemaSet.LoadDefaultSchemas();
 schemaSet.RegisterDocumentEngine<MatroskaDocumentEngine>();
 
+using var fileStream = File.Open(@"TestData\Big_Buck_Bunny_180 10s.webm", FileMode.Open);
 
-using var fileStream = File.Open(@"k:\Video\matroska_audio_test.mka", FileMode.Open);
-
-var docs = schemaSet.Parse(fileStream).ToList();
+var docs = schemaSet.ParseDocuments(fileStream).ToList();
 var nmt = true;

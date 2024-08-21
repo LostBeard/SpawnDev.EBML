@@ -2,7 +2,7 @@
 
 namespace SpawnDev.EBML.Extensions
 {
-    internal static class StreamExtensions
+    internal static class EBMLStreamExtensions
     {
         public static int WriteEBMLElementIdRaw(this Stream _this, ulong id, int minOctets = 0)
         {

@@ -4,11 +4,11 @@ namespace BlazorEBMLViewer.Services
 {
     public class EBMLSchemaService
     {
-        public EBMLSchemaSet SchemaSet { get; }
+        public SchemaSet SchemaSet { get; }
         public EBMLSchemaService()
         {
-            SchemaSet = new EBMLSchemaSet();
-            SchemaSet.LoadExecutingAssemblyEmbeddedSchemaXMLs();
+            SchemaSet = new SchemaSet();
+            SchemaSet.LoadDefaultSchemas();
             SchemaSet.RegisterDocumentEngine<MatroskaDocumentEngine>();
         }
     }
