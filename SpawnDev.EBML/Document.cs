@@ -23,15 +23,16 @@ namespace SpawnDev.EBML
         /// <summary>
         /// Returns the EBML header or null if not found
         /// </summary>
-        public MasterElement? EBMLHeader => GetContainer("EBML");
+        public MasterElement? Header => GetContainer("EBML");
         /// <summary>
         /// Returns \EBML\DocType or null
         /// </summary>
-        public override string DocType => EBMLHeader?.ReadString("DocType") ?? EBMLParser.EBML;
+        public override string DocType => Header?.ReadString("DocType") ?? EBMLParser.EBML;
         /// <summary>
-        /// Returns the EBML body or null if not found
+        /// Returns the EBML body or null if not found<br/>
+        /// EBML body refers to the first element that is not the EBML element, usually right after the EBML element
         /// </summary>
-        public MasterElement? EBMLBody => Data.FirstOrDefault(o => o.Name != "EBML" && o is MasterElement) as MasterElement;
+        public MasterElement? Body => Data.FirstOrDefault(o => o.Name != "EBML" && o is MasterElement) as MasterElement;
         /// <summary>
         /// Creates a new instance
         /// </summary>
