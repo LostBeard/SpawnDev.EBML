@@ -294,8 +294,14 @@ namespace SpawnDev.EBML
         }
         private string[] GetEmbeddedSchemasXMLResourceNames(Assembly assembly)
         {
+            var ret = new List<string>();
             var temp = assembly.GetManifestResourceNames();
-            return temp.Where(name => name.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)).ToArray();
+            foreach (var name in temp)
+            {
+                if (!name.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)) continue;
+                ret.Add(name);
+            }
+            return ret.ToArray();
         }
         private string? ReadEmbeddedResourceString(Assembly assembly, string resourceName)
         {
