@@ -75,7 +75,7 @@ namespace SpawnDev.EBML
         /// <summary>
         /// If AutoPopulateSeekHead == true these Top level elements will have Seeks created for them if they do not already exist
         /// </summary>
-        public List<string> DefaultSeekHeadTargets = new List<string> { "Info", "Tracks", "Chapters", "Cues", "Attachments" };
+        public List<string> DefaultSeekHeadTargets = new List<string> { "Info", "Tracks", "Chapters", "Cues", "Attachments", "Cluster", "Tags" };
         public bool UpdateSeekHeadOnChange { get; set; } = true;
         public bool VerifySeekHeadOnChange { get; set; } = true;
         bool UpdatingSeekHead = false;
