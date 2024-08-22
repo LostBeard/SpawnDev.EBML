@@ -1,6 +1,5 @@
-﻿using SpawnDev.EBML.Extensions;
-using SpawnDev.EBML.Segments;
-using System.Collections;
+﻿using SpawnDev.EBML.Segments;
+using SpawnDev.EBML.Extensions;
 
 namespace SpawnDev.EBML.Elements
 {

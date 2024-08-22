@@ -155,6 +155,22 @@ namespace SpawnDev.EBML.Elements
             AddElement(element);
             return element;
         }
+        public BlockElement? AddBlock(string name, byte[] data)
+        {
+            var schemaElement = SchemaSet.GetElement(name, DocType);
+            if (schemaElement == null || schemaElement.Type != BlockElement.TypeName) throw new Exception("Invalid element type");
+            var element = new BlockElement(schemaElement, data);
+            AddElement(element);
+            return element;
+        }
+        public BlockElement? AddSimpleBlock(string name, byte[] data)
+        {
+            var schemaElement = SchemaSet.GetElement(name, DocType);
+            if (schemaElement == null || schemaElement.Type != SimpleBlockElement.TypeName) throw new Exception("Invalid element type");
+            var element = new SimpleBlockElement(schemaElement, data);
+            AddElement(element);
+            return element;
+        }
         public TElement AddElement<TElement>(SchemaElement elementSchema) where TElement : BaseElement
         {
             var element = Create<TElement>(elementSchema);
@@ -470,6 +486,8 @@ namespace SpawnDev.EBML.Elements
                 UTF8Element.TypeName => new UTF8Element(schemaElement, source, header),
                 BinaryElement.TypeName => new BinaryElement(schemaElement, source, header),
                 DateElement.TypeName => new DateElement(schemaElement, source, header),
+                BlockElement.TypeName => new BlockElement(schemaElement, source, header),
+                SimpleBlockElement.TypeName => new SimpleBlockElement(schemaElement, source, header),
                 _ => null
             };
             return ret;
@@ -490,6 +508,8 @@ namespace SpawnDev.EBML.Elements
                 UTF8Element.TypeName => new UTF8Element(schemaElement),
                 BinaryElement.TypeName => new BinaryElement(schemaElement),
                 DateElement.TypeName => new DateElement(schemaElement),
+                BlockElement.TypeName => new BlockElement(schemaElement),
+                SimpleBlockElement.TypeName => new SimpleBlockElement(schemaElement),
                 _ => null
             };
             return (TElement?)ret;
@@ -509,6 +529,8 @@ namespace SpawnDev.EBML.Elements
                 UTF8Element.TypeName => new UTF8Element(schemaElement),
                 BinaryElement.TypeName => new BinaryElement(schemaElement),
                 DateElement.TypeName => new DateElement(schemaElement),
+                BlockElement.TypeName => new BlockElement(schemaElement),
+                SimpleBlockElement.TypeName => new SimpleBlockElement(schemaElement),
                 _ => null
             };
             return ret;

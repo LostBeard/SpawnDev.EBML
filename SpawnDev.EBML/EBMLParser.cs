@@ -71,7 +71,7 @@ namespace SpawnDev.EBML
             {
                 stream.Position = startPos;
                 var doc = new Document(this, stream);
-                if (doc.Data.Count() == 0)
+                if (!doc.Data.Any())
                 {
                     yield break;
                 }
@@ -92,7 +92,7 @@ namespace SpawnDev.EBML
             {
                 stream.Position = startPos;
                 var doc = new Document(this, stream);
-                if (doc.Data.Count() == 0)
+                if (!doc.Data.Any())
                 {
                     break;
                 }
@@ -133,6 +133,8 @@ namespace SpawnDev.EBML
                 case UTF8Element.TypeName: return typeof(UTF8Element);
                 case BinaryElement.TypeName: return typeof(BinaryElement);
                 case DateElement.TypeName: return typeof(DateElement);
+                case BlockElement.TypeName: return typeof(BlockElement);
+                case SimpleBlockElement.TypeName: return typeof(SimpleBlockElement);
                 default: return null;
             }
         }
@@ -292,14 +294,8 @@ namespace SpawnDev.EBML
         }
         private string[] GetEmbeddedSchemasXMLResourceNames(Assembly assembly)
         {
-            var ret = new List<string>();
             var temp = assembly.GetManifestResourceNames();
-            foreach (var name in temp)
-            {
-                if (!name.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)) continue;
-                ret.Add(name);
-            }
-            return ret.ToArray();
+            return temp.Where(name => name.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)).ToArray();
         }
         private string? ReadEmbeddedResourceString(Assembly assembly, string resourceName)
         {
