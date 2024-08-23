@@ -6,30 +6,34 @@ namespace SpawnDev.EBML.Elements
     public class MasterElement : BaseElement<IEnumerable<BaseElement>>
     {
         static Crc32Algorithm CRC = new Crc32Algorithm(false);
-        public EBMLParser SchemaSet { get; }
+        public EBMLParser Parser { get; }
         public const string TypeName = "master";
         public override string DataString => $"";
         public event Action<MasterElement, BaseElement> OnElementAdded;
         public event Action<MasterElement, BaseElement> OnElementRemoved;
+        /// <summary>
+        /// Child elements of this element
+        /// </summary>
+        public override IEnumerable<BaseElement> Children => Data;
         public MasterElement(EBMLParser schemas, SchemaElement schemaElement, SegmentSource source, ElementHeader? header = null) : base(schemaElement, source, header)
         {
-            SchemaSet = schemas;
+            Parser = schemas;
         }
         public MasterElement(EBMLParser schemas, SegmentSource source, ElementHeader? header = null) : base(null, source, header)
         {
-            SchemaSet = schemas;
+            Parser = schemas;
         }
-        public MasterElement(EBMLParser schemas, SchemaElement schemaElement) : base(schemaElement, new List<BaseElement>())
+        public MasterElement(EBMLParser schemas, SchemaElement schemaElement, IEnumerable<BaseElement>? data = null) : base(schemaElement, data != null ? data : new List<BaseElement>())
         {
-            SchemaSet = schemas;
+            Parser = schemas;
         }
-        public MasterElement(EBMLParser schemas, ulong id) : base(id, new List<BaseElement>())
+        public MasterElement(EBMLParser schemas, ulong id, IEnumerable<BaseElement>? data = null) : base(id, data != null ? data : new List<BaseElement>())
         {
-            SchemaSet = schemas;
+            Parser = schemas;
         }
-        public MasterElement(EBMLParser schemas) : base(0, new List<BaseElement>())
+        public MasterElement(EBMLParser schemas, IEnumerable<BaseElement>? data = null) : base(0, data != null ? data : new List<BaseElement>())
         {
-            SchemaSet = schemas;
+            Parser = schemas;
         }
         /// <summary>
         /// Returns a list of EBMLSchemaElement that can be added to this MasterElement
@@ -39,10 +43,10 @@ namespace SpawnDev.EBML.Elements
         public IEnumerable<SchemaElement> GetAddableElementSchemas(bool includeMaxCountItems = false)
         {
             var ret = new List<SchemaElement>();
-            var allSchemaElements = SchemaSet.GetElements(DocType);
+            var allSchemaElements = Parser.GetElements(DocType);
             foreach (var addable in allSchemaElements.Values)
             {
-                var parentAllowed = SchemaSet.CheckParent(this, addable);
+                var parentAllowed = Parser.CheckParent(this, addable);
                 if (!parentAllowed) continue;
                 if (!includeMaxCountItems)
                 {
@@ -58,10 +62,26 @@ namespace SpawnDev.EBML.Elements
             }
             return ret;
         }
+        /// <summary>
+        /// Returns the index of the specified element
+        /// </summary>
+        /// <param name="element"></param>
+        /// <returns></returns>
         public int GetChildIndex(BaseElement element)
         {
             var data = (List<BaseElement>)Data;
             return data.IndexOf(element);
+        }
+        /// <summary>
+        /// Returns the index of the specified element among the children with the same element Name
+        /// </summary>
+        /// <param name="element"></param>
+        /// <returns></returns>
+        public int GetTypeIndex(BaseElement element)
+        {
+            var data = (List<BaseElement>)Data;
+            var ofType = data.Where(o => o.Name == element.Name).ToList();
+            return ofType.IndexOf(element);
         }
         /// <summary>
         /// Returns a list of EBMLSchemaElement for elements that do not occur in this MasterElement as many times as there EBML minOccurs value states it should
@@ -70,10 +90,10 @@ namespace SpawnDev.EBML.Elements
         public IEnumerable<SchemaElement> GetMissingElementSchemas()
         {
             var ret = new List<SchemaElement>();
-            var allSchemaElements = SchemaSet.GetElements(DocType);
+            var allSchemaElements = Parser.GetElements(DocType);
             foreach (var addable in allSchemaElements.Values)
             {
-                var parentAllowed = SchemaSet.CheckParent(this, addable);
+                var parentAllowed = Parser.CheckParent(this, addable);
                 if (!parentAllowed) continue;
                 var requiresAdd = false;
                 if (addable.MinOccurs > 0)
@@ -85,88 +105,408 @@ namespace SpawnDev.EBML.Elements
             }
             return ret;
         }
+        /// <summary>
+        /// Adds missing container elements to this element
+        /// </summary>
+        /// <returns></returns>
         public IEnumerable<MasterElement> AddMissingContainers()
         {
             var missing = GetMissingElementSchemas();
             var masterEls = missing.Where(o => o.Type == MasterElement.TypeName).Select(o => AddElement(o)).Cast<MasterElement>().ToList();
             return masterEls;
         }
-        public MasterElement? AddContainer(string name)
+        #region Create, but do not add
+        /// <summary>
+        /// Creates a new element using this element's DocType<br/>
+        /// The new element is not added to this element's Data
+        /// </summary>
+        /// <param name="name">Element schema name</param>
+        /// <param name="data">Optional child elements</param>
+        /// <returns>The new element</returns>
+        /// <exception cref="Exception">Thrown if the element name is not found in the schema</exception>
+        public MasterElement CreateContainer(string name, IEnumerable<BaseElement>? data = null)
         {
-            var schemaElement = SchemaSet.GetElement(name, DocType);
+            var schemaElement = Parser.GetElement(name, DocType);
             if (schemaElement == null || schemaElement.Type != MasterElement.TypeName) throw new Exception("Invalid element type");
-            var masterEl = new MasterElement(SchemaSet, schemaElement);
-            AddElement(masterEl);
+            var masterEl = new MasterElement(Parser, schemaElement, data);
             return masterEl;
         }
-        public UTF8Element? AddUTF8(string name, string data)
+        /// <summary>
+        /// Creates a new element using this element's DocType<br/>
+        /// The new element is not added to this element's Data
+        /// </summary>
+        /// <param name="name">Element schema name</param>
+        /// <param name="data">Element data value</param>
+        /// <returns>The new element</returns>
+        /// <exception cref="Exception">Thrown if the element name is not found in the schema</exception>
+        public UTF8Element CreateUTF8(string name, string data)
         {
-            var schemaElement = SchemaSet.GetElement(name, DocType);
+            var schemaElement = Parser.GetElement(name, DocType);
             if (schemaElement == null || schemaElement.Type != UTF8Element.TypeName) throw new Exception("Invalid element type");
             var element = new UTF8Element(schemaElement, data);
-            AddElement(element);
             return element;
         }
-        public StringElement? AddString(string name, string data)
+        /// <summary>
+        /// Creates a new element using this element's DocType<br/>
+        /// The new element is not added to this element's Data
+        /// </summary>
+        /// <param name="name">Element schema name</param>
+        /// <param name="data">Element data value</param>
+        /// <returns>The new element</returns>
+        /// <exception cref="Exception">Thrown if the element name is not found in the schema</exception>
+        public StringElement CreateASCII(string name, string data)
         {
-            var schemaElement = SchemaSet.GetElement(name, DocType);
+            var schemaElement = Parser.GetElement(name, DocType);
             if (schemaElement == null || schemaElement.Type != StringElement.TypeName) throw new Exception("Invalid element type");
             var element = new StringElement(schemaElement, data);
-            AddElement(element);
             return element;
         }
-        public UintElement? AddUint(string name, ulong data)
+        /// <summary>
+        /// Creates a new element using this element's DocType<br/>
+        /// The new element is not added to this element's Data
+        /// </summary>
+        /// <param name="name">Element schema name</param>
+        /// <param name="data">Element data value</param>
+        /// <returns>The new element</returns>
+        /// <exception cref="Exception">Thrown if the element name is not found in the schema</exception>
+        public UintElement CreateUint(string name, ulong data)
         {
-            var schemaElement = SchemaSet.GetElement(name, DocType);
+            var schemaElement = Parser.GetElement(name, DocType);
             if (schemaElement == null || schemaElement.Type != UintElement.TypeName) throw new Exception("Invalid element type");
             var element = new UintElement(schemaElement, data);
-            AddElement(element);
             return element;
         }
-        public IntElement? AddInt(string name, long data)
+        /// <summary>
+        /// Creates a new element using this element's DocType<br/>
+        /// The new element is not added to this element's Data
+        /// </summary>
+        /// <param name="name">Element schema name</param>
+        /// <param name="data">Element data value</param>
+        /// <returns>The new element</returns>
+        /// <exception cref="Exception">Thrown if the element name is not found in the schema</exception>
+        public IntElement CreateInt(string name, long data)
         {
-            var schemaElement = SchemaSet.GetElement(name, DocType);
+            var schemaElement = Parser.GetElement(name, DocType);
             if (schemaElement == null || schemaElement.Type != IntElement.TypeName) throw new Exception("Invalid element type");
             var element = new IntElement(schemaElement, data);
-            AddElement(element);
             return element;
         }
-        public FloatElement? AddFloat(string name, double data)
+        /// <summary>
+        /// Creates a new element using this element's DocType<br/>
+        /// The new element is not added to this element's Data
+        /// </summary>
+        /// <param name="name">Element schema name</param>
+        /// <param name="data">Element data value</param>
+        /// <returns>The new element</returns>
+        /// <exception cref="Exception">Thrown if the element name is not found in the schema</exception>
+        public FloatElement CreateFloat(string name, double data)
         {
-            var schemaElement = SchemaSet.GetElement(name, DocType);
+            var schemaElement = Parser.GetElement(name, DocType);
             if (schemaElement == null || schemaElement.Type != FloatElement.TypeName) throw new Exception("Invalid element type");
             var element = new FloatElement(schemaElement, data);
-            AddElement(element);
             return element;
         }
-        public DateElement? AddDate(string name, DateTime data)
+        /// <summary>
+        /// Creates a new element using this element's DocType<br/>
+        /// The new element is not added to this element's Data
+        /// </summary>
+        /// <param name="name">Element schema name</param>
+        /// <param name="data">Element data value</param>
+        /// <returns>The new element</returns>
+        /// <exception cref="Exception">Thrown if the element name is not found in the schema</exception>
+        public DateElement CreateDate(string name, DateTime data)
         {
-            var schemaElement = SchemaSet.GetElement(name, DocType);
+            var schemaElement = Parser.GetElement(name, DocType);
             if (schemaElement == null || schemaElement.Type != DateElement.TypeName) throw new Exception("Invalid element type");
             var element = new DateElement(schemaElement, data);
-            AddElement(element);
             return element;
         }
-        public BinaryElement? AddBinary(string name, byte[] data)
+        /// <summary>
+        /// Creates a new element using this element's DocType<br/>
+        /// The new element is not added to this element's Data
+        /// </summary>
+        /// <param name="name">Element schema name</param>
+        /// <param name="data">Element data value</param>
+        /// <returns>The new element</returns>
+        /// <exception cref="Exception">Thrown if the element name is not found in the schema</exception>
+        public BinaryElement CreateBinary(string name, byte[] data)
         {
-            var schemaElement = SchemaSet.GetElement(name, DocType);
+            var schemaElement = Parser.GetElement(name, DocType);
             if (schemaElement == null || schemaElement.Type != BinaryElement.TypeName) throw new Exception("Invalid element type");
             var element = new BinaryElement(schemaElement, data);
-            AddElement(element);
             return element;
         }
-        public TElement AddElement<TElement>(SchemaElement elementSchema) where TElement : BaseElement
+        /// <summary>
+        /// Create a new element
+        /// </summary>
+        /// <param name="schemaElement">Element schema</param>
+        /// <param name="source">Element binary data source as a SegmentSource</param>
+        /// <param name="header">Header element if available</param>
+        /// <returns>The new element</returns>
+        public BaseElement Create(SchemaElement schemaElement, SegmentSource source, ElementHeader? header = null)
         {
-            var element = Create<TElement>(elementSchema);
-            if (element == null) return null;
-            return AddElement(element);
+            if (schemaElement == null) throw new NullReferenceException(nameof(schemaElement));
+            var type = Parser.GetElementType(schemaElement.Type);
+            BaseElement? ret = schemaElement.Type switch
+            {
+                MasterElement.TypeName => new MasterElement(Parser, schemaElement, source, header),
+                UintElement.TypeName => new UintElement(schemaElement, source, header),
+                IntElement.TypeName => new IntElement(schemaElement, source, header),
+                FloatElement.TypeName => new FloatElement(schemaElement, source, header),
+                StringElement.TypeName => new StringElement(schemaElement, source, header),
+                UTF8Element.TypeName => new UTF8Element(schemaElement, source, header),
+                BinaryElement.TypeName => new BinaryElement(schemaElement, source, header),
+                DateElement.TypeName => new DateElement(schemaElement, source, header),
+                _ => throw new Exception("Invalid schema element")
+            };
+            return ret;
         }
-        public BaseElement? AddElement(SchemaElement elementSchema)
+        /// <summary>
+        /// Create a new element
+        /// </summary>
+        /// <param name="schemaElement">Element schema</param>
+        /// <returns>The new element</returns>
+        public TElement CreateElement<TElement>(SchemaElement schemaElement) where TElement : BaseElement
         {
-            var element = Create(elementSchema);
-            if (element == null) return null;
-            return AddElement(element);
+            if (schemaElement == null) throw new NullReferenceException(nameof(schemaElement));
+            var type = Parser.GetElementType(schemaElement.Type);
+            if (!typeof(TElement).IsAssignableFrom(type)) throw new Exception("Create type mismatch");
+            BaseElement? ret = schemaElement.Type switch
+            {
+                MasterElement.TypeName => new MasterElement(Parser, schemaElement),
+                UintElement.TypeName => new UintElement(schemaElement),
+                IntElement.TypeName => new IntElement(schemaElement),
+                FloatElement.TypeName => new FloatElement(schemaElement),
+                StringElement.TypeName => new StringElement(schemaElement),
+                UTF8Element.TypeName => new UTF8Element(schemaElement),
+                BinaryElement.TypeName => new BinaryElement(schemaElement),
+                DateElement.TypeName => new DateElement(schemaElement),
+                _ => throw new Exception("Invalid schema element")
+            };
+            return (TElement)ret;
         }
+        /// <summary>
+        /// Create a new element
+        /// </summary>
+        /// <param name="schemaElement">Element schema</param>
+        /// <returns>The new element</returns>
+        public BaseElement CreateElement(SchemaElement schemaElement)
+        {
+            if (schemaElement == null) throw new NullReferenceException(nameof(schemaElement));
+            var type = Parser.GetElementType(schemaElement.Type);
+            BaseElement? ret = schemaElement.Type switch
+            {
+                MasterElement.TypeName => new MasterElement(Parser, schemaElement),
+                UintElement.TypeName => new UintElement(schemaElement),
+                IntElement.TypeName => new IntElement(schemaElement),
+                FloatElement.TypeName => new FloatElement(schemaElement),
+                StringElement.TypeName => new StringElement(schemaElement),
+                UTF8Element.TypeName => new UTF8Element(schemaElement),
+                BinaryElement.TypeName => new BinaryElement(schemaElement),
+                DateElement.TypeName => new DateElement(schemaElement),
+                _ => throw new Exception("Invalid type")
+            };
+            return ret;
+        }
+        #endregion
+        #region Add
+        /// <summary>
+        /// Creates a new element using this element's DocType<br/>
+        /// The new element is added to this element's Data
+        /// </summary>
+        /// <param name="name">Element schema name</param>
+        /// <param name="data">Optional child elements</param>
+        /// <returns>The new element</returns>
+        /// <exception cref="Exception">Thrown if the element name is not found in the schema</exception>
+        public MasterElement AddContainer(string name, IEnumerable<BaseElement>? data = null) => AddElement(CreateContainer(name, data));
+        /// <summary>
+        /// Creates a new element using this element's DocType<br/>
+        /// The new element is added to this element's Data
+        /// </summary>
+        /// <param name="name">Element schema name</param>
+        /// <param name="data">Element data value</param>
+        /// <returns>The new element</returns>
+        /// <exception cref="Exception">Thrown if the element name is not found in the schema</exception>
+        public UTF8Element AddUTF8(string name, string data) => AddElement(CreateUTF8(name, data));
+        /// <summary>
+        /// Creates a new element using this element's DocType<br/>
+        /// The new element is added to this element's Data
+        /// </summary>
+        /// <param name="name">Element schema name</param>
+        /// <param name="data">Element data value</param>
+        /// <returns>The new element</returns>
+        /// <exception cref="Exception">Thrown if the element name is not found in the schema</exception>
+        public StringElement AddASCII(string name, string data)=> AddElement(CreateASCII(name, data));
+        /// <summary>
+        /// Creates a new element using this element's DocType<br/>
+        /// The new element is added to this element's Data
+        /// </summary>
+        /// <param name="name">Element schema name</param>
+        /// <param name="data">Element data value</param>
+        /// <returns>The new element</returns>
+        /// <exception cref="Exception">Thrown if the element name is not found in the schema</exception>
+        public UintElement AddUint(string name, ulong data)=> AddElement(CreateUint(name, data));
+        /// <summary>
+        /// Creates a new element using this element's DocType<br/>
+        /// The new element is added to this element's Data
+        /// </summary>
+        /// <param name="name">Element schema name</param>
+        /// <param name="data">Element data value</param>
+        /// <returns>The new element</returns>
+        /// <exception cref="Exception">Thrown if the element name is not found in the schema</exception>
+        public IntElement AddInt(string name, long data)=> AddElement(CreateInt(name, data));
+        /// <summary>
+        /// Creates a new element using this element's DocType<br/>
+        /// The new element is added to this element's Data
+        /// </summary>
+        /// <param name="name">Element schema name</param>
+        /// <param name="data">Element data value</param>
+        /// <returns>The new element</returns>
+        /// <exception cref="Exception">Thrown if the element name is not found in the schema</exception>
+        public FloatElement AddFloat(string name, double data)=> AddElement(CreateFloat(name, data));
+        /// <summary>
+        /// Creates a new element using this element's DocType<br/>
+        /// The new element is added to this element's Data
+        /// </summary>
+        /// <param name="name">Element schema name</param>
+        /// <param name="data">Element data value</param>
+        /// <returns>The new element</returns>
+        /// <exception cref="Exception">Thrown if the element name is not found in the schema</exception>
+        public DateElement AddDate(string name, DateTime data) => AddElement(CreateDate(name, data));
+        /// <summary>
+        /// Creates a new element using this element's DocType<br/>
+        /// The new element is added to this element's Data
+        /// </summary>
+        /// <param name="name">Element schema name</param>
+        /// <param name="data">Element data value</param>
+        /// <returns>The new element</returns>
+        /// <exception cref="Exception">Thrown if the element name is not found in the schema</exception>
+        public BinaryElement AddBinary(string name, byte[] data) => AddElement(CreateBinary(name, data));
+        /// <summary>
+        /// Creates a new element using this element's DocType<br/>
+        /// The new element is added to this element's Data
+        /// </summary>
+        /// <param name="elementSchema">Element schema</param>
+        /// <returns>The new element</returns>
+        public TElement AddElement<TElement>(SchemaElement elementSchema) where TElement : BaseElement => AddElement(CreateElement<TElement>(elementSchema));
+        /// <summary>
+        /// Creates a new element using this element's DocType<br/>
+        /// The new element is added to this element's Data
+        /// </summary>
+        /// <param name="elementSchema">Element schema</param>
+        /// <returns>The new element</returns>
+        public BaseElement AddElement(SchemaElement elementSchema) => AddElement(CreateElement(elementSchema));
+        #endregion
+        #region Insert element
+        /// <summary>
+        /// Creates a new element using this element's DocType<br/>
+        /// The new element is added to this element's Data
+        /// </summary>
+        /// <param name="name">Element schema name</param>
+        /// <param name="data">Optional child elements</param>
+        /// <param name="index">Index in this element's Data list</param>
+        /// <returns>The new element</returns>
+        public MasterElement InsertContainer(string name, IEnumerable<BaseElement>? data = null, int index = 0) => InsertElement(CreateContainer(name, data), index);
+        /// <summary>
+        /// Creates a new element using this element's DocType<br/>
+        /// The new element is added to this element's Data
+        /// </summary>
+        /// <param name="name">Element schema name</param>
+        /// <param name="index">Index in this element's Data list</param>
+        /// <returns>The new element</returns>
+        public MasterElement InsertContainer(string name, int index = 0) => InsertElement(CreateContainer(name), index);
+        /// <summary>
+        /// Creates a new element using this element's DocType<br/>
+        /// The new element is added to this element's Data
+        /// </summary>
+        /// <param name="name">Element schema name</param>
+        /// <param name="data">Element data</param>
+        /// <param name="index">Index in this element's Data list</param>
+        /// <returns>The new element</returns>
+        public FloatElement InsertFloat(string name, double data, int index = 0) => InsertElement(CreateFloat(name, data), index);
+        /// <summary>
+        /// Creates a new element using this element's DocType<br/>
+        /// The new element is added to this element's Data
+        /// </summary>
+        /// <param name="name">Element schema name</param>
+        /// <param name="data">Element data</param>
+        /// <param name="index">Index in this element's Data list</param>
+        /// <returns>The new element</returns>
+        public IntElement InsertInt(string name, long data, int index = 0) => InsertElement(CreateInt(name, data), index);
+        /// <summary>
+        /// Creates a new element using this element's DocType<br/>
+        /// The new element is added to this element's Data
+        /// </summary>
+        /// <param name="name">Element schema name</param>
+        /// <param name="data">Element data</param>
+        /// <param name="index">Index in this element's Data list</param>
+        /// <returns>The new element</returns>
+        public UintElement InsertUint(string name, ulong data, int index = 0) => InsertElement(CreateUint(name, data), index);
+        /// <summary>
+        /// Creates a new element using this element's DocType<br/>
+        /// The new element is added to this element's Data
+        /// </summary>
+        /// <param name="name">Element schema name</param>
+        /// <param name="data">Element data</param>
+        /// <param name="index">Index in this element's Data list</param>
+        /// <returns>The new element</returns>
+        public UTF8Element InsertUTF8(string name, string data, int index = 0) => InsertElement(CreateUTF8(name, data), index);
+        /// <summary>
+        /// Creates a new element using this element's DocType<br/>
+        /// The new element is added to this element's Data
+        /// </summary>
+        /// <param name="name">Element schema name</param>
+        /// <param name="data">Element data</param>
+        /// <param name="index">Index in this element's Data list</param>
+        /// <returns>The new element</returns>
+        public StringElement InsertASCII(string name, string data, int index = 0) => InsertElement(CreateASCII(name, data), index);
+        /// <summary>
+        /// Creates a new element using this element's DocType<br/>
+        /// The new element is added to this element's Data
+        /// </summary>
+        /// <param name="name">Element schema name</param>
+        /// <param name="data">Element data</param>
+        /// <param name="index">Index in this element's Data list</param>
+        /// <returns>The new element</returns>
+        public DateElement InsertDate(string name, DateTime data, int index = 0) => InsertElement(CreateDate(name, data), index);
+        /// <summary>
+        /// Creates a new element using this element's DocType<br/>
+        /// The new element is added to this element's Data
+        /// </summary>
+        /// <param name="name">Element schema name</param>
+        /// <param name="data">Element data</param>
+        /// <param name="index">Index in this element's Data list</param>
+        /// <returns>The new element</returns>
+        public BinaryElement InsertBinary(string name, byte[] data, int index = 0) => InsertElement(CreateBinary(name, data), index);
+        /// <summary>
+        /// Insert a child element
+        /// </summary>
+        /// <typeparam name="TElement"></typeparam>
+        /// <param name="element"></param>
+        /// <param name="index"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        public TElement InsertElement<TElement>(TElement element, int index = 0) where TElement : BaseElement
+        {
+            if (element == null)
+            {
+                throw new ArgumentNullException(nameof(element));
+            }
+            var data = (List<BaseElement>)Data;
+            if (data.Contains(element)) return element;
+            data.Insert(0, element);
+            if (element.Parent != this) element.SetParent(this);
+            element.OnChanged += Child_OnChanged;
+            if (element is MasterElement masterElement)
+            {
+                masterElement.OnElementAdded += Child_OnElementAdded;
+                masterElement.OnElementRemoved += Child_ElementRemoved;
+            }
+            OnElementAdded?.Invoke(this, element);
+            DataChanged(new List<BaseElement> { element });
+            return element;
+        }
+        #endregion
         /// <summary>
         /// Updates the container's CRC-32 element if it has one
         /// </summary>
@@ -188,15 +528,25 @@ namespace SpawnDev.EBML.Elements
             }
             return false;
         }
+        /// <summary>
+        /// Calculate this elements CRC-32 value
+        /// </summary>
+        /// <returns></returns>
         public byte[]? CalculateCRC()
         {
-            var crcSchema = SchemaSet.GetElement("CRC-32");
+            var crcSchema = Parser.GetElement("CRC-32");
             if (crcSchema == null) return null;
             var dataToCRC = Data.Where(o => o.Id != crcSchema.Id).Select(o => o.ToStream());
             using var stream = new MultiStreamSegment(dataToCRC);
             var hash = CRC.ComputeHash(stream);
             return hash;
         }
+        /// <summary>
+        /// Remove a child element
+        /// </summary>
+        /// <typeparam name="TElement"></typeparam>
+        /// <param name="element"></param>
+        /// <returns></returns>
         public TElement RemoveElement<TElement>(TElement element) where TElement : BaseElement
         {
             var data = (List<BaseElement>)Data;
@@ -213,6 +563,13 @@ namespace SpawnDev.EBML.Elements
             DataChanged();
             return element;
         }
+        /// <summary>
+        /// Add a child element
+        /// </summary>
+        /// <typeparam name="TElement"></typeparam>
+        /// <param name="element"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentNullException"></exception>
         public TElement AddElement<TElement>(TElement element) where TElement : BaseElement
         {
             if (element == null)
@@ -266,99 +623,268 @@ namespace SpawnDev.EBML.Elements
             DataChanged(new List<BaseElement> { element });
             return element;
         }
-        private void Child_ElementRemoved(MasterElement masterElement, BaseElement element)
+        #region Update element value
+        /// <summary>
+        /// Update an element's value at the specified path
+        /// </summary>
+        /// <param name="path">Element path</param>
+        /// <param name="data">New value</param>
+        /// <returns>True if the element data was set</returns>
+        public bool UpdateDate(string path, DateTime data)
         {
-            OnElementRemoved?.Invoke(masterElement, element);
+            var element = GetElement<DateElement>(path);
+            if (element == null) return false;
+            element.Data = data;
+            return true;
         }
-        private void Child_OnElementAdded(MasterElement masterElement, BaseElement element)
+        /// <summary>
+        /// Update an element's value at the specified path
+        /// </summary>
+        /// <param name="path">Element path</param>
+        /// <param name="data">New value</param>
+        /// <returns>True if the element data was set</returns>
+        public bool UpdateFloat(string path, double data)
         {
-            OnElementAdded?.Invoke(masterElement, element);
+            var element = GetElement<FloatElement>(path);
+            if (element == null) return false;
+            element.Data = data;
+            return true;
         }
-        public TElement InsertElement<TElement>(TElement element, int index = 0) where TElement : BaseElement
+        /// <summary>
+        /// Update an element's value at the specified path
+        /// </summary>
+        /// <param name="path">Element path</param>
+        /// <param name="data">New value</param>
+        /// <returns>True if the element data was set</returns>
+        public bool UpdateBinary(string path, byte[] data)
         {
-            if (element == null)
-            {
-                throw new ArgumentNullException(nameof(element));
-            }
-            var data = (List<BaseElement>)Data;
-            if (data.Contains(element)) return element;
-            data.Insert(0, element);
-            if (element.Parent != this) element.SetParent(this);
-            element.OnChanged += Child_OnChanged;
-            if (element is MasterElement masterElement)
-            {
-                masterElement.OnElementAdded += Child_OnElementAdded;
-                masterElement.OnElementRemoved += Child_ElementRemoved;
-            }
-            OnElementAdded?.Invoke(this, element);
-            DataChanged(new List<BaseElement> { element });
-            return element;
+            var element = GetElement<BinaryElement>(path);
+            if (element == null) return false;
+            element.Data = data;
+            return true;
         }
-        private void Child_OnChanged(IEnumerable<BaseElement> elements)
+        /// <summary>
+        /// Update an element's value at the specified path
+        /// </summary>
+        /// <param name="path">Element path</param>
+        /// <param name="data">New value</param>
+        /// <returns>True if the element data was set</returns>
+        public bool UpdateInt(string path, long data)
         {
-            DataChanged(elements);
+            var element = GetElement<IntElement>(path);
+            if (element == null) return false;
+            element.Data = data;
+            return true;
         }
-        public string? ReadUTF8(string path)
+        /// <summary>
+        /// Update an element's value at the specified path
+        /// </summary>
+        /// <param name="path">Element path</param>
+        /// <param name="data">New value</param>
+        /// <returns>True if the element data was set</returns>
+        public bool UpdateUint(string path, ulong data)
         {
-            var els = GetElements<UTF8Element>(path).FirstOrDefault();
-            return els?.Data;
+            var element = GetElement<UintElement>(path);
+            if (element == null) return false;
+            element.Data = data;
+            return true;
         }
-        public string? ReadASCII(string path)
+        /// <summary>
+        /// Update an element's value at the specified path
+        /// </summary>
+        /// <param name="path">Element path</param>
+        /// <param name="data">New value</param>
+        /// <returns>True if the element data was set</returns>
+        public bool UpdateUTF8(string path, string data)
         {
-            var els = GetElements<StringElement>(path).FirstOrDefault();
-            return els?.Data;
+            var element = GetElement<UTF8Element>(path);
+            if (element == null) return false;
+            element.Data = data;
+            return true;
         }
+        /// <summary>
+        /// Update an element's value at the specified path
+        /// </summary>
+        /// <param name="path">Element path</param>
+        /// <param name="data">New value</param>
+        /// <returns>True if the element data was set</returns>
+        public bool UpdateASCII(string path, string data)
+        {
+            var element = GetElement<StringElement>(path);
+            if (element == null) return false;
+            element.Data = data;
+            return true;
+        }
+        /// <summary>
+        /// Update an element's value at the specified path
+        /// </summary>
+        /// <param name="path">Element path</param>
+        /// <param name="data">New value</param>
+        /// <returns>True if the element data was set</returns>
+        public bool UpdateString(string path, string data)
+        {
+            var element = GetElement<BaseElement>(path);
+            if (element == null) return false;
+            if (element is StringElement stringElement) stringElement.Data = data;
+            else if (element is UTF8Element utf8Element) utf8Element.Data = data;
+            else return false;
+            return true;
+        }
+        #endregion
+        #region Read element value
+        /// <summary>
+        /// Read the element data at the specified path
+        /// </summary>
+        /// <param name="path">Element path</param>
+        /// <returns>The element value or null</returns>
+        public DateTime? ReadDate(string path) => GetElement<DateElement>(path)?.Data;
+        /// <summary>
+        /// Read the element data at the specified path
+        /// </summary>
+        /// <param name="path">Element path</param>
+        /// <returns>The element value or null</returns>
+        public double? ReadFloat(string path) => GetElement<FloatElement>(path)?.Data;
+        /// <summary>
+        /// Read the element data at the specified path
+        /// </summary>
+        /// <param name="path">Element path</param>
+        /// <returns>The element value or null</returns>
+        public byte[]? ReadBinary(string path) => GetElement<BinaryElement>(path)?.Data;
+        /// <summary>
+        /// Read the element data at the specified path
+        /// </summary>
+        /// <param name="path">Element path</param>
+        /// <returns>The element value or null</returns>
+        public long? ReadInt(string path) => GetElement<IntElement>(path)?.Data;
+        /// <summary>
+        /// Read the element data at the specified path
+        /// </summary>
+        /// <param name="path">Element path</param>
+        /// <returns>The element value or null</returns>
+        public ulong? ReadUint(string path) => GetElement<UintElement>(path)?.Data;
+        /// <summary>
+        /// Read the element data at the specified path
+        /// </summary>
+        /// <param name="path">Element path</param>
+        /// <returns>The element value or null</returns>
+        public string? ReadUTF8(string path) => GetElement<UTF8Element>(path)?.Data;
+        /// <summary>
+        /// Read the element data at the specified path
+        /// </summary>
+        /// <param name="path">Element path</param>
+        /// <returns>The element value or null</returns>
+        public string? ReadASCII(string path) => GetElement<StringElement>(path)?.Data;
+        /// <summary>
+        /// Read the element data at the specified path
+        /// </summary>
+        /// <param name="path">Element path</param>
+        /// <returns>The element value or null</returns>
         public string? ReadString(string path)
         {
-            var stringElement = GetElements<BaseElement>(path).FirstOrDefault();
+            var stringElement = GetElement<BaseElement>(path);
             if (stringElement == null) return null;
             if (stringElement is UTF8Element stringUTF8) return stringUTF8.Data;
             if (stringElement is StringElement stringASCII) return stringASCII.Data;
-            throw new Exception("Unknown type");
+            return null;
         }
+        #endregion
         /// <summary>
-        /// Returns all children recursively
+        /// Get all children recursively
         /// </summary>
-        /// <returns></returns>
-        public IEnumerable<BaseElement> GetDescendants()
+        public IEnumerable<BaseElement> Descendants
         {
-            var ret = new List<BaseElement>();
-            var children = Data;
-            ret.AddRange(children);
-            foreach (var child in children)
+            get
             {
-                if (child is MasterElement masterElement)
+                var ret = new List<BaseElement>();
+                var children = Data;
+                ret.AddRange(children);
+                foreach (var child in children)
                 {
-                    ret.AddRange(masterElement.GetDescendants());
+                    if (child is MasterElement masterElement)
+                    {
+                        ret.AddRange(masterElement.Descendants);
+                    }
+                }
+                return ret;
+            }
+        }
+        public BaseElement? GetElement(string path) => GetElements(path).FirstOrDefault();
+        public TElement? GetElement<TElement>(string path) where TElement : BaseElement => GetElements<TElement>(path).FirstOrDefault();
+        /// <summary>
+        /// Returns all elements that match the specified path and return type TElement
+        /// </summary>
+        /// <typeparam name="TElement">The element type filter</typeparam>
+        /// <param name="path">
+        /// Element path. Example:<br/>
+        /// - "/EBML/DocType"<br/>
+        /// </param>
+        /// <returns>The match results</returns>
+        public IEnumerable<TElement> GetElements<TElement>(string path) where TElement : BaseElement
+        {
+            var parts = path.Split(EBMLParser.PathDelimiters, StringSplitOptions.TrimEntries);
+            if (parts.Length >= 2 && parts[0] == "" && parts[1] == "")
+            {
+                parts = parts.Skip(2).ToArray();
+                path = string.Join(EBMLParser.PathDelimiter, parts);
+                var document = Document;
+                if (this != document)
+                {
+                    return document == null ? Enumerable.Empty<TElement>() : document.GetElements<TElement>(path);
+                }
+            }
+            else if (parts.Length >= 1 && parts[0] == "")
+            {
+                parts = parts.Skip(1).ToArray();
+                path = string.Join(EBMLParser.PathDelimiter, parts);
+                var rootElement = LastAncestor;
+                if (rootElement != null)
+                {
+                    return rootElement == null ? Enumerable.Empty<TElement>() : rootElement.GetElements<TElement>(path);
+                }
+            }
+            if (parts.Length == 0) return Data.Where(o => o is TElement).Cast<TElement>().ToList();
+            var masterEls = new List<MasterElement> { this };
+            for (var i = 0; i < parts.Length - 1; i++)
+            {
+                var pathPart = parts[i];
+                masterEls = masterEls.SelectMany(o => o.GetChildren<MasterElement>(pathPart)).ToList();
+                if (masterEls.Count == 0) return Enumerable.Empty<TElement>();
+            }
+            var finalPart = parts.Last();
+            return masterEls.SelectMany(o => o.GetChildren<TElement>(finalPart)).ToList();
+        }
+        internal IEnumerable<TElement> GetChildren<TElement>(string path) where TElement : BaseElement
+        {
+            var ret = new List<TElement>();
+            var matchIndex = 0;
+            NameParts(path, out var childName, out var childIndex);
+            var requireChildName = !string.IsNullOrEmpty(childName);
+            foreach (var child in Data)
+            {
+                if (child is TElement childMaster && (!requireChildName || childMaster.Name == childName))
+                {
+                    if (childIndex < 0 || matchIndex == childIndex)
+                    {
+                        ret.Add(childMaster);
+                    }
+                    matchIndex++;
                 }
             }
             return ret;
         }
-        public BaseElement? GetContainer(ulong id) => GetElement<MasterElement>(id);
-        public IEnumerable<MasterElement> GetContainers(ulong id) => GetElements<MasterElement>(id);
-        public TElement? GetElement<TElement>(ulong id) where TElement : BaseElement => Data.FirstOrDefault(o => o.Id == id && o is TElement) as TElement;
-        public IEnumerable<TElement> GetElements<TElement>(ulong id) where TElement : BaseElement => Data.Where(o => o.Id == id && o is TElement).Cast<TElement>().ToList();
-        public BaseElement? GetElement(ulong id) => Data.FirstOrDefault(o => o.Id == id);
-        public IEnumerable<BaseElement> GetElements(ulong id) => Data.Where(o => o.Id == id).ToList();
-        public BaseElement? GetElement(string path) => GetElements(path).FirstOrDefault();
-        public TElement? GetElement<TElement>(string path) where TElement : BaseElement => GetElements<TElement>(path).FirstOrDefault();
-        public IEnumerable<TElement> GetElements<TElement>(string path) where TElement : BaseElement
+        private void NameParts(string instanceName, out string name, out int index)
         {
-            var parts = path.Split('\\', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length == 0)
+            var partParts = instanceName.Split(EBMLParser.IndexDelimiter);
+            if (partParts.Length == 2)
             {
-                return this is TElement ? new TElement[] { (this as TElement)! } : Enumerable.Empty<TElement>();
+                index = int.Parse(partParts[1]);
+                name = partParts[0];
             }
-            var masterEls = new List<MasterElement> { this };
-            for (var i = 0; i < parts.Length - 1; i++)
+            else
             {
-                var elementName = parts[i];
-                masterEls = masterEls.SelectMany(o => o.Data.Where(o => o.Name == elementName && o is MasterElement).Cast<MasterElement>()).ToList();
-                if (masterEls.Count == 0) return Enumerable.Empty<TElement>();
+                index = -1; // indicates no specific instance requested
+                name = instanceName;
             }
-            var elementNameFinal = parts.Last();
-            var results = masterEls.SelectMany(o => o.Data.Where(o => o.Name == elementNameFinal && o is TElement)!).Cast<TElement>().ToList();
-            return results;
         }
         public IEnumerable<BaseElement> GetElements(string path) => GetElements<BaseElement>(path);
         public IEnumerable<MasterElement> GetContainers(string path) => GetElements<MasterElement>(path);
@@ -390,7 +916,7 @@ namespace SpawnDev.EBML.Elements
                 }
                 var elementDataOffset = source.Position;
                 var id = elementHeader.Id;
-                var schemaElement = SchemaSet.GetElement(id, parsingDocType);
+                var schemaElement = Parser.GetElement(id, parsingDocType);
                 if (schemaElement == null)
                 {
                     var nmttt = true;
@@ -405,7 +931,7 @@ namespace SpawnDev.EBML.Elements
                 // - The end of the EBML Document, either when reaching the end of the file or because a new EBML Header started.
                 var elementDataSizeMax = elementDataSize ?? (ulong)(SegmentSource.Length - elementDataOffset);
                 var elementSegmentSource = SegmentSource.Slice(elementDataOffset, (long)elementDataSizeMax);
-                var canParent = SchemaSet.CheckParent(this, schemaElement);
+                var canParent = Parser.CheckParent(this, schemaElement);
                 if (!canParent)
                 {
                     source.Position = elementDataOffset;
@@ -431,7 +957,7 @@ namespace SpawnDev.EBML.Elements
                 {
                     masterElement.OnElementAdded += Child_OnElementAdded;
                     masterElement.OnElementRemoved += Child_ElementRemoved;
-                    if (element.Path == @"\EBML")
+                    if (element.Name == "EBML")
                     {
                         var newDocType = masterElement.ReadString("DocType");
                         if (!string.IsNullOrEmpty(newDocType))
@@ -455,63 +981,17 @@ namespace SpawnDev.EBML.Elements
                 }
             }
         }
-        private BaseElement? Create(SchemaElement? schemaElement, SegmentSource source, ElementHeader? header = null)
+        private void Child_ElementRemoved(MasterElement masterElement, BaseElement element)
         {
-            if (schemaElement == null) return null;
-            var type = SchemaSet.GetElementType(schemaElement.Type);
-            if (type == null) return null;
-            BaseElement? ret = schemaElement.Type switch
-            {
-                MasterElement.TypeName => new MasterElement(SchemaSet, schemaElement, source, header),
-                UintElement.TypeName => new UintElement(schemaElement, source, header),
-                IntElement.TypeName => new IntElement(schemaElement, source, header),
-                FloatElement.TypeName => new FloatElement(schemaElement, source, header),
-                StringElement.TypeName => new StringElement(schemaElement, source, header),
-                UTF8Element.TypeName => new UTF8Element(schemaElement, source, header),
-                BinaryElement.TypeName => new BinaryElement(schemaElement, source, header),
-                DateElement.TypeName => new DateElement(schemaElement, source, header),
-                _ => null
-            };
-            return ret;
+            OnElementRemoved?.Invoke(masterElement, element);
         }
-        TElement? Create<TElement>(SchemaElement? schemaElement) where TElement : BaseElement
+        private void Child_OnElementAdded(MasterElement masterElement, BaseElement element)
         {
-            if (schemaElement == null) return null;
-            var type = SchemaSet.GetElementType(schemaElement.Type);
-            if (type == null) return null;
-            if (!typeof(TElement).IsAssignableFrom(type)) throw new Exception("Create type mismatch");
-            BaseElement? ret = schemaElement.Type switch
-            {
-                MasterElement.TypeName => new MasterElement(SchemaSet, schemaElement),
-                UintElement.TypeName => new UintElement(schemaElement),
-                IntElement.TypeName => new IntElement(schemaElement),
-                FloatElement.TypeName => new FloatElement(schemaElement),
-                StringElement.TypeName => new StringElement(schemaElement),
-                UTF8Element.TypeName => new UTF8Element(schemaElement),
-                BinaryElement.TypeName => new BinaryElement(schemaElement),
-                DateElement.TypeName => new DateElement(schemaElement),
-                _ => null
-            };
-            return (TElement?)ret;
+            OnElementAdded?.Invoke(masterElement, element);
         }
-        BaseElement? Create(SchemaElement? schemaElement)
+        private void Child_OnChanged(IEnumerable<BaseElement> elements)
         {
-            if (schemaElement == null) return null;
-            var type = SchemaSet.GetElementType(schemaElement.Type);
-            if (type == null) return null;
-            BaseElement? ret = schemaElement.Type switch
-            {
-                MasterElement.TypeName => new MasterElement(SchemaSet, schemaElement),
-                UintElement.TypeName => new UintElement(schemaElement),
-                IntElement.TypeName => new IntElement(schemaElement),
-                FloatElement.TypeName => new FloatElement(schemaElement),
-                StringElement.TypeName => new StringElement(schemaElement),
-                UTF8Element.TypeName => new UTF8Element(schemaElement),
-                BinaryElement.TypeName => new BinaryElement(schemaElement),
-                DateElement.TypeName => new DateElement(schemaElement),
-                _ => null
-            };
-            return ret;
+            DataChanged(elements);
         }
         protected override void DataToSegmentSource(ref SegmentSource source)
         {

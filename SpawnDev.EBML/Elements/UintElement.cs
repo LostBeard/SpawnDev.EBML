@@ -21,7 +21,7 @@ namespace SpawnDev.EBML.Elements
         public UintElement(SchemaElement schemaElement, SegmentSource source, ElementHeader? header = null) : base(schemaElement, source, header) { }
         public UintElement(SchemaElement schemaElement, ulong value) : base(schemaElement, value) { }
         public UintElement(SchemaElement schemaElement) : base(schemaElement, default) { }
-        protected override void DataFromSegmentSource(ref ulong data) => data = EBMLConverter.ReadEBMLUInt(SegmentSource.ReadBytes(0, SegmentSource.Length, true));
+        protected override void DataFromSegmentSource(ref ulong data) => data = EBMLConverter.ToUInt(SegmentSource.ReadBytes(0, SegmentSource.Length, true));
         protected override void DataToSegmentSource(ref SegmentSource source) => source = new ByteSegment(EBMLConverter.ToUIntBytes(Data));
     }
 }

@@ -1,5 +1,6 @@
 ﻿using SpawnDev.EBML.Elements;
 using System.Reflection;
+using System.Xml.Linq;
 
 namespace SpawnDev.EBML
 {
@@ -12,6 +13,18 @@ namespace SpawnDev.EBML
         /// EBML string "ebml"
         /// </summary>
         public const string EBML = "ebml";
+        /// <summary>
+        /// Allowed path delimiters
+        /// </summary>
+        public static char[] PathDelimiters { get; } = new char[] { '\\', '/' };
+        /// <summary>
+        /// Default Path delimiter<br/>
+        /// </summary>
+        public static char PathDelimiter { get; } = '/';
+        /// <summary>
+        /// Index delimiter that can be used in path queries
+        /// </summary>
+        public static char IndexDelimiter { get; } = ',';
         /// <summary>
         /// Loaded schemas
         /// </summary>
@@ -32,6 +45,7 @@ namespace SpawnDev.EBML
             if (defaultConfig)
             {
                 LoadDefaultSchemas();
+                RegisterDocumentEngine<EBMLDocumentEngine>();
                 RegisterDocumentEngine<MatroskaDocumentEngine>();
             }
         }
@@ -84,14 +98,15 @@ namespace SpawnDev.EBML
         /// parses a single EBML document from the stream
         /// </summary>
         /// <param name="stream"></param>
+        /// <param name="filename"></param>
         /// <returns></returns>
-        public Document? ParseDocument(Stream stream)
+        public Document? ParseDocument(Stream stream, string? filename = null)
         {
             var startPos = stream.Position;
             while (startPos < stream.Length)
             {
                 stream.Position = startPos;
-                var doc = new Document(this, stream);
+                var doc = new Document(this, stream, filename);
                 if (doc.Data.Count() == 0)
                 {
                     break;
@@ -106,8 +121,9 @@ namespace SpawnDev.EBML
         /// Creates a new EBML document with the specified DocType
         /// </summary>
         /// <param name="docType"></param>
+        /// <param name="filename"></param>
         /// <returns></returns>
-        public Document CreateDocument(string docType) => new Document(this, docType);
+        public Document CreateDocument(string docType, string? filename = null) => new Document(this, docType, filename);
         /// <summary>
         /// Returns the .Net that represents the specified elementType:<br/>
         /// - master<br/>
@@ -141,7 +157,7 @@ namespace SpawnDev.EBML
         /// </summary>
         /// <param name="docType"></param>
         /// <returns></returns>
-        public Dictionary<ulong, SchemaElement> GetElements(string docType = EBML)
+        public Dictionary<ulong, SchemaElement> GetElements(string? docType = EBML)
         {
             var ret = docType != EBML && Schemas.TryGetValue(EBML, out var ebmlSchema) ? new Dictionary<ulong, SchemaElement>(ebmlSchema.Elements) : new Dictionary<ulong, SchemaElement>();
             if (!string.IsNullOrEmpty(docType) && Schemas.TryGetValue(docType, out var schema))
@@ -159,7 +175,7 @@ namespace SpawnDev.EBML
         /// <param name="id"></param>
         /// <param name="docType"></param>
         /// <returns></returns>
-        public SchemaElement? GetElement(ulong id, string docType = EBML)
+        public SchemaElement? GetElement(ulong id, string? docType = EBML)
         {
             if (!string.IsNullOrEmpty(docType) && Schemas.TryGetValue(docType, out var schema) && schema.Elements.TryGetValue(id, out var element)) return element;
             return docType != EBML ? GetElement(id) : null;
@@ -170,7 +186,7 @@ namespace SpawnDev.EBML
         /// <param name="name"></param>
         /// <param name="docType"></param>
         /// <returns></returns>
-        public SchemaElement? GetElement(string name, string docType = EBML)
+        public SchemaElement? GetElement(string name, string? docType = EBML)
         {
             if (!string.IsNullOrEmpty(docType) && Schemas.TryGetValue(docType, out var schema))
             {
@@ -197,9 +213,13 @@ namespace SpawnDev.EBML
                 return false;
             }
             var elementName = schemaElement.Name;
+            if (elementName == "CRC-32" || elementName == "Void")
+            {
+                var nmt = true;
+            }
             var parentPath = parent.Path;
             var parentMasterName = parent.Name;
-            var path = $@"{parentPath.TrimEnd('\\')}\{elementName}";
+            var path = $@"{parentPath.TrimEnd(EBMLParser.PathDelimiters)}{EBMLParser.PathDelimiter}{elementName}";
             var depth = parent.Depth + 1;
             if (path == schemaElement.Path)
             {

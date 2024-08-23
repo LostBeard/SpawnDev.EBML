@@ -82,22 +82,20 @@ namespace SpawnDev.EBML.Extensions
             leftover = 0;
             return -1;
         }
-        public static ulong ReadEBMLElementSize(byte[] data, out int vintSize, out bool isUnknownSize, int index = 0)
+        public static ulong ToElementSize(byte[] data, out int vintSize, out bool isUnknownSize, int index = 0)
         {
-            var size = ReadEBMLVINT(data, out vintSize, index);
+            var size = ToVINT(data, out vintSize, index);
             isUnknownSize = IsUnknownSizeVINT(size, vintSize);
             return size;
         }
-        public static T ReadEBMLElementId<T>(byte[] data, out int vintSize, out bool isInvalid, int index = 0) where T : struct => (T)(object)ReadEBMLElementId(data, out vintSize, out isInvalid, index);
-        public static ulong ReadEBMLElementId(byte[] data, out int vintSize, out bool isInvalid, int index = 0)
+        public static ulong ToElementId(byte[] data, out int vintSize, out bool isInvalid, int index = 0)
         {
-            var size = ReadEBMLVINT(data, out vintSize, index);
+            var size = ToVINT(data, out vintSize, index);
             isInvalid = IsUnknownSizeVINT(size, vintSize);
             return size;
         }
-        public static T ReadEBMLElementId<T>(byte[] data, out int vintSize, int index = 0) where T : struct => (T)(object)ReadEBMLElementId(data, out vintSize, index);
-        public static ulong ReadEBMLElementId(byte[] data, out int vintSize, int index = 0) => ReadEBMLVINT(data, out vintSize, index);
-        public static ulong ReadEBMLVINT(byte[] data, out int size, int index = 0)
+        public static ulong ToElementId(byte[] data, out int vintSize, int index = 0) => ToVINT(data, out vintSize, index);
+        public static ulong ToVINT(byte[] data, out int size, int index = 0)
         {
             var firstByte = data[index];
             var bitIndex = GetFirstSetBitIndex(firstByte, out var leftover);
@@ -113,7 +111,7 @@ namespace SpawnDev.EBML.Extensions
             size = bitIndex + 1;
             return BigEndian.ToUInt64(ulongBytes);
         }
-        public static ulong ReadEBMLUInt(byte[] data)
+        public static ulong ToUInt(byte[] data)
         {
             var index = 0;
             var size = data.Length;
@@ -125,7 +123,7 @@ namespace SpawnDev.EBML.Extensions
             }
             return BigEndian.ToUInt64(bytes);
         }
-        public static ulong ReadEBMLUInt(byte[] data, int size, int index = 0)
+        public static ulong ToUInt(byte[] data, int size, int index = 0)
         {
             var bytes = new byte[8];
             var destIndex = 8 - size;
@@ -135,7 +133,7 @@ namespace SpawnDev.EBML.Extensions
             }
             return BigEndian.ToUInt64(bytes);
         }
-        public static long ReadEBMLInt(byte[] data, int size, int index = 0)
+        public static long ToInt(byte[] data, int size, int index = 0)
         {
             var bytes = new byte[8];
             var destIndex = 8 - size;
@@ -145,7 +143,7 @@ namespace SpawnDev.EBML.Extensions
             }
             return BigEndian.ToInt64(bytes);
         }
-        public static long ReadEBMLInt(byte[] data)
+        public static long ToInt(byte[] data)
         {
             var size = data.Length;
             var bytes = new byte[8];
@@ -156,7 +154,7 @@ namespace SpawnDev.EBML.Extensions
             }
             return BigEndian.ToInt64(bytes);
         }
-        public static double ReadEBMLFloat(byte[] data)
+        public static double ToFloat(byte[] data)
         {
             var size = data.Length;
             if (size == 4)
@@ -169,7 +167,7 @@ namespace SpawnDev.EBML.Extensions
             }
             return 0;
         }
-        public static double ReadEBMLFloat(byte[] data, int size, int index = 0)
+        public static double ToFloat(byte[] data, int size, int index = 0)
         {
             if (size == 4)
             {
@@ -181,15 +179,15 @@ namespace SpawnDev.EBML.Extensions
             }
             return 0;
         }
-        public static string ReadEBMLString(byte[] data, int count, int index = 0, Encoding? encoding = null)
+        public static string ToString(byte[] data, int count, int index = 0, Encoding? encoding = null)
         {
             if (encoding == null) encoding = Encoding.UTF8;
             return encoding.GetString(data, index, count).TrimEnd('\0');
         }
-        public static DateTime ReadEBMLDate(byte[] data, int size, int index = 0)
+        public static DateTime ToDate(byte[] data, int size, int index = 0)
         {
             if (size == 0) return DateTimeReferencePoint;
-            var timeOffset = ReadEBMLInt(data, size, index);
+            var timeOffset = ToInt(data, size, index);
             return DateTimeReferencePoint + TimeSpan.FromMilliseconds(timeOffset / TimeScale);
         }
         public const ulong UnknownSizeVINT8 = 72057594037927935ul;

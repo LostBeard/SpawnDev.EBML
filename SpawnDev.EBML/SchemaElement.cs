@@ -108,7 +108,10 @@ namespace SpawnDev.EBML
             DocType = docType;
             Id = id;
             Name = node.Attribute("name")!.Value;
-            Path = node.Attribute("path")!.Value;
+            // The delimiter in Path is changed from the default used in ebml schema '\\' to '/' which this library uses
+            var path = node.Attribute("path")!.Value;
+            var pathParts = path.Split(EBMLParser.PathDelimiters);
+            Path = string.Join(EBMLParser.PathDelimiter, pathParts);
             Type = node.Attribute("type")!.Value;
             Default = node.Attribute("default")?.Value;
             MinVer = node.Attribute("minVer")?.Value;
@@ -121,7 +124,7 @@ namespace SpawnDev.EBML
             Range = node.Attribute("range")?.Value;
             Position = node.Attribute("position")?.Value == null ? null : int.Parse(node.Attribute("position")!.Value);
             PositionWeight = node.Attribute("positionWeight")?.Value == null ? 0 : int.Parse(node.Attribute("positionWeight")!.Value);
-            var minDepthMatch = Regex.Match(Path, $@"^\\\(([0-9]+)-\\\){Name}$");
+            var minDepthMatch = Regex.Match(path, $@"^\\\(([0-9]+)-\\\){Name}$");
             if (minDepthMatch.Success)
             {
                 var minDepthStr = minDepthMatch.Groups[1].Value;
@@ -130,7 +133,7 @@ namespace SpawnDev.EBML
             }
             else
             {
-                IsGlobal = Regex.IsMatch(Path, $@"^\\\(-\\\){Name}$");
+                IsGlobal = Regex.IsMatch(path, $@"^\\\(-\\\){Name}$");
             }
             var childElements = node.Elements();
             foreach (var childEl in childElements)

@@ -9,170 +9,85 @@ namespace SpawnDev.EBML
     public class MatroskaDocumentEngine : DocumentEngine
     {
         /// <summary>
-        /// DocTypes this engine supports
-        /// </summary>
-        public override string[] DocTypes { get; } = new string[] { "matroska", "webm" };
-        /// <summary>
         /// This constructor can take an existing EBMLDocument and parse it<br/>
         /// This is used by the generic Parser
         /// </summary>
         public MatroskaDocumentEngine(Document document) : base(document)
         {
-            Document.OnElementAdded += Document_OnElementAdded;
-            Document.OnElementRemoved += Document_OnElementRemoved;
-            Document.OnChanged += Document_OnChanged;
+
         }
-        public bool GetSeeks(out MasterElement? segmentElement, out ulong segmentStart, out MasterElement? seekHeadElement, out List<Seek>? seeks)
-        {
-            segmentElement = Document.GetContainer("Segment");
-            if (segmentElement == null)
-            {
-                seekHeadElement = null;
-                seeks = null;
-                segmentStart = 0;
-                return false;
-            }
-            segmentStart = segmentElement.Offset + segmentElement.HeaderSize;
-            seeks = new List<Seek>();
-            seekHeadElement = Document.GetContainer(@"\Segment\SeekHead");
-            if (seekHeadElement == null) return false;
-            var seekElements = seekHeadElement.GetContainers("Seek");
-            foreach (var seek in seekElements)
-            {
-                seeks.Add(new Seek(seek, segmentStart));
-            }
-            return true;
-        }
-        public class Seek
-        {
-            public MasterElement? SeekElement { get; set; }
-            public BinaryElement? SeekIdElement { get; set; }
-            public UintElement? SeekPositionElement { get; set; }
-            public ulong TargetId { get; set; }
-            public ulong SeekPosition { get; set; }
-            public Seek(MasterElement seekElement, ulong segmentDataStartPosition)
-            {
-                SeekElement = seekElement;
-                SeekIdElement = SeekElement.GetElement<BinaryElement>("SeekID");
-                SeekPositionElement = SeekElement.GetElement<UintElement>("SeekPosition");
-                TargetId = SeekIdElement == null ? 0 : EBMLConverter.ReadEBMLUInt(SeekIdElement.Data);
-                SeekPosition = SeekPositionElement == null ? 0 : SeekPositionElement.Data + segmentDataStartPosition;
-            }
-        }
-        /// <summary>
-        /// Fires when any document element changes<br/>
-        /// When an element changes, this event will fire for the element that changes and for every one of its parent elements up the chain
-        /// </summary>
-        /// <param name="elements">The element that changed</param>
-        private void Document_OnChanged(IEnumerable<BaseElement> elements)
-        {
-            var element = elements.First();
-            //Console.WriteLine($"MKVE: Document_OnChanged: {elements.Count()} {element.Depth} {element.Name} {element.Path}");
-            // Verify SeekPosition element values if any
-            UpdateSeekHead();
-        }
-        public bool AutoPopulateSeekHead { get; set; } = true;
-        /// <summary>
-        /// If AutoPopulateSeekHead == true these Top level elements will have Seeks created for them if they do not already exist
-        /// </summary>
         public List<string> DefaultSeekHeadTargets = new List<string> { "Info", "Tracks", "Chapters", "Cues", "Attachments" };
-        public bool UpdateSeekHeadOnChange { get; set; } = true;
-        public bool VerifySeekHeadOnChange { get; set; } = true;
-        bool UpdatingSeekHead = false;
-        void UpdateSeekHead()
+        public bool AutoPopulateSeekDefaultTargets { get; set; } = true;
+        public override void DocumentCheck(List<IEnumerable<BaseElement>> changeLogs)
         {
-            if (!DocTypeSupported) return;
-            if (!VerifySeekHeadOnChange && !UpdateSeekHeadOnChange)
+            var issues = new List<DocumentIssue>();
+            var foundSeekTargetElementNames = new List<string>();
+            // verify seek data
+            var segmentElement = Document.GetContainer("Segment");
+            if (segmentElement == null) return;
+            var segmentStart = segmentElement.DataOffset;
+            var seekHeadElements = segmentElement.GetContainers("SeekHead");
+            foreach (var seekHeadElement in seekHeadElements)
             {
-                return;
-            }
-            if (UpdatingSeekHead)
-            {
-                Console.WriteLine("Not UpdateSeekHead due to already in progress");
-                //return;
-            }
-            Console.WriteLine(">> UpdateSeekHead");
-            UpdatingSeekHead = true;
-            try
-            {
-                if (GetSeeks(out var segmentElement, out var segmentStart, out var seekHeadElement, out var seeks))
+                var seekElements = seekHeadElement.GetContainers("Seek");
+                foreach (var seekElement in seekElements)
                 {
-                    var requiredTargets = DefaultSeekHeadTargets.ToList();
-                    var seekSchema = Document.SchemaSet.GetElement("Seek", Document.DocType);
-                    if (seekSchema == null) return;
-                    var seekIDSchema = Document.SchemaSet.GetElement("SeekID", Document.DocType);
-                    var seekPositionSchema = Document.SchemaSet.GetElement("SeekPosition", Document.DocType);
-                    if (seekIDSchema == null || seekPositionSchema == null)
+                    var seekIdBytes = seekElement.ReadBinary("SeekID");
+                    if (seekIdBytes != null)
                     {
-                        return;
-                    }
-                    foreach (var requiredTarget in DefaultSeekHeadTargets)
-                    {
-                        var targetElement = segmentElement!.GetContainer(requiredTarget);
-                        if (targetElement == null)
+                        var seekId = EBMLConverter.ToUInt(seekIdBytes);
+                        var targetElement = segmentElement.Data.FirstOrDefault(e => e.Id == seekId);
+                        if (targetElement != null)
                         {
-                            // target does not exist, we can skip it
-                            requiredTargets.Remove(requiredTarget);
-                            continue;
-                        }
-                        var targetElementPosition = targetElement!.Offset;
-                        var targetSeekPosition = targetElementPosition - segmentStart;
-                        var targetSeek = seeks!.FirstOrDefault(o => o.TargetId == targetElement.Id);
-                        if (targetSeek == null)
-                        {
-                            // seek does not exist
-                            if (AutoPopulateSeekHead)
+                            foundSeekTargetElementNames.Add(targetElement.Name);
+                            var seekPosition = seekElement.ReadUint("SeekPosition");
+                            var targetPosition = targetElement.Offset;
+                            if (seekPosition == null || seekPosition.Value + segmentStart != targetPosition)
                             {
-                                // create seek
-                                var idUint = EBMLConverter.ToUIntBytes(targetElement.Id);
-                                var newSeekEl = new MasterElement(Document.SchemaSet, seekSchema);
-                                var newSeekIdEl = new BinaryElement(seekIDSchema, idUint);
-                                var newSeekPositionEl = new UintElement(seekPositionSchema, targetSeekPosition);
-                                newSeekEl.AddElement(newSeekIdEl);
-                                newSeekEl.AddElement(newSeekPositionEl);
-                                // attach to document
-                                seekHeadElement!.AddElement(newSeekEl);
-                                break;
+                                var correctSeekPosition = targetPosition - segmentStart;
+                                var diff = correctSeekPosition - targetPosition;
+                                Log($"Seek position is off by {diff}. Fixing seek position.");
+                                seekElement.UpdateUint("SeekPosition", correctSeekPosition);
                             }
                             else
                             {
-                                // do not create
+                                // correct. nothing to do
+                                Log($"Seek position verified for {targetElement.Name}");
                             }
                         }
                         else
                         {
-                            // seekID el has already been verified to exist
-                            // make sure position el exists and the value is 
-                            if (targetSeek.SeekPositionElement == null)
-                            {
-                                var newSeekPositionEl = new UintElement(seekPositionSchema, targetSeekPosition);
-                                seekHeadElement!.AddElement(newSeekPositionEl);
-                                Console.WriteLine("Added seek position");
-                                break;
-                            }
-                            else if (targetSeek.SeekPositionElement.Data != targetSeekPosition)
-                            {
-                                targetSeek.SeekPositionElement.Data = targetSeekPosition;
-                                Console.WriteLine("Updated seek position");
-                                break;
-                            }
+                            // Target is missing!
+                            // remove seek?
+                            Log("Seek target is missing. Removing seek element.");
+                            seekElement.Remove();
                         }
                     }
                 }
             }
-            finally
+            // if auto-populate verify Seek elements exist for "Info", "Tracks", "Chapters", "Cues", "Attachments"
+            if (AutoPopulateSeekDefaultTargets)
             {
-                Console.WriteLine("<< UpdateSeekHead");
-                UpdatingSeekHead = false;
+                if (seekHeadElements.Count() > 0)
+                {
+                    var targetNamesToAdd = DefaultSeekHeadTargets.Except(foundSeekTargetElementNames).ToList();
+                    var seekHeadElement = seekHeadElements.First();
+                    foreach (var targetName in targetNamesToAdd)
+                    {
+                        var targetElement = segmentElement.GetContainer(targetName);
+                        if (targetElement != null)
+                        {
+                            var seekPosition = targetElement.Offset - segmentStart;
+                            var seekElement = seekHeadElement.CreateContainer("Seek");
+                            var seekIdBytes = EBMLConverter.ToUIntBytes(targetElement.Id);
+                            seekElement.AddBinary("SeekID", seekIdBytes);
+                            seekElement.AddUint("SeekPosition", seekPosition);
+                            seekHeadElement.AddElement(seekElement);
+                            Log($"Seek added for {targetElement.Name}");
+                        }
+                    }
+                }
             }
-        }
-        private void Document_OnElementAdded(MasterElement masterElement, BaseElement element)
-        {
-
-        }
-        private void Document_OnElementRemoved(MasterElement masterElement, BaseElement element)
-        {
-            //Console.WriteLine($"MKVE: Document_OnElementRemoved: {element.Depth} {masterElement.Path}\\{element.Name}");
         }
     }
 }

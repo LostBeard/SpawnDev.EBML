@@ -12,7 +12,7 @@
                     <RadzenMenu>
                         <RadzenMenuItem Text="File">
                             <RadzenMenuItem Text="New" Icon="add_circle_outline">
-                                @foreach (var schema in EBMLSchemaService.SchemaSet.Schemas.Values)
+                                @foreach (var schema in EBMLSchemaService.Parser.Schemas.Values)
                                 {
                                     <RadzenMenuItem Click="@(() => NewDocument(schema))" Text="@schema.DocType" Icon="schema"></RadzenMenuItem>
                                 }

@@ -1,5 +1,6 @@
 ﻿using SpawnDev.EBML.Elements;
 using SpawnDev.EBML.Segments;
+using System.Diagnostics;
 
 namespace SpawnDev.EBML
 {
@@ -9,13 +10,17 @@ namespace SpawnDev.EBML
     public class Document : MasterElement, IDisposable
     {
         /// <summary>
+        /// Element Instance name
+        /// </summary>
+        public override string InstanceName => Name;
+        /// <summary>
         /// Returns tru if this element is a document
         /// </summary>
         public override bool IsDocument { get; } = true;
         /// <summary>
         /// Element path
         /// </summary>
-        public override string Path { get; } = "\\";
+        public override string Path { get; } = EBMLParser.PathDelimiter.ToString();
         /// <summary>
         /// Get or set the Filename. Used for informational purposes only.
         /// </summary>
@@ -25,7 +30,11 @@ namespace SpawnDev.EBML
         /// </summary>
         public MasterElement? Header => GetContainer("EBML");
         /// <summary>
-        /// Returns \EBML\DocType or null
+        /// Log message event
+        /// </summary>
+        public event Action<string> OnLog;
+        /// <summary>
+        /// Returns EBML DocType or null
         /// </summary>
         public override string DocType => Header?.ReadString("DocType") ?? EBMLParser.EBML;
         /// <summary>
@@ -43,8 +52,6 @@ namespace SpawnDev.EBML
         {
             if (!string.IsNullOrEmpty(filename)) Filename = filename;
             OnChanged += Document_OnChanged;
-            OnElementAdded += Document_OnElementAdded;
-            OnElementRemoved += Document_OnElementRemoved;
             LoadEngines();
         }
         /// <summary>
@@ -54,8 +61,6 @@ namespace SpawnDev.EBML
         {
             if (!string.IsNullOrEmpty(filename)) Filename = filename;
             OnChanged += Document_OnChanged;
-            OnElementAdded += Document_OnElementAdded;
-            OnElementRemoved += Document_OnElementRemoved;
             LoadEngines();
         }
         /// <summary>
@@ -66,8 +71,6 @@ namespace SpawnDev.EBML
             if (!string.IsNullOrEmpty(filename)) Filename = filename;
             CreateDocument(docType);
             OnChanged += Document_OnChanged;
-            OnElementAdded += Document_OnElementAdded;
-            OnElementRemoved += Document_OnElementRemoved;
             LoadEngines();
         }
         /// <summary>
@@ -78,37 +81,104 @@ namespace SpawnDev.EBML
         {
             var ret = new Dictionary<DocumentEngineInfo, DocumentEngine>();
             DocumentEngines = ret;
-            foreach (var engineInfo in SchemaSet.DocumentEngines)
+            foreach (var engineInfo in Parser.DocumentEngines)
             {
                 var engine = engineInfo.Create(this);
+                engine.OnLog += Engine_OnLog;
                 ret.Add(engineInfo, engine);
             }
         }
+
+        private void Engine_OnLog(string msg)
+        {
+            Log(msg);
+        }
+
+        protected void Log(string msg)
+        {
+            OnLog?.Invoke($"{this.GetType().Name} {msg}");
+        }
+        /// <summary>
+        /// Disable the document engines<br/>
+        /// Useful when making multiple changes to the document
+        /// </summary>
+        public void DisableDocumentEngines()
+        {
+            DocumentEnginesEnabled = false;
+        }
+        /// <summary>
+        /// Enable the document engines<br/>
+        /// </summary>
+        /// <param name="runIfChanged"></param>
+        public void EnabledDocumentEngines(bool runIfChanged = true)
+        {
+            DocumentEnginesEnabled = true;
+            if (runIfChanged && unhandledChanges > 0) RunDocumentEngines();
+        }
+        /// <summary>
+        /// True if the document engines should run when the document changes
+        /// </summary>
+        public bool DocumentEnginesEnabled { get; private set; } = true;
+        /// <summary>
+        /// Returns true if the document engines are running
+        /// </summary>
+        public bool DocumentEnginesRunning { get; private set; } = false;
+        int unhandledChanges = 0;
+        List<IEnumerable<BaseElement>> ChangeEventBackLog = new List<IEnumerable<BaseElement>>();
         private void Document_OnChanged(IEnumerable<BaseElement> elements)
         {
-            var element = elements.First();
-            Console.WriteLine($"DOC: Document_OnChanged: {elements.Count()} {element.Name} {element.Path}");
-            foreach (var el in elements)
+            unhandledChanges++;
+            ChangeEventBackLog.Add(elements);
+            if (DocumentEnginesEnabled)
             {
-                if (el is MasterElement masterElement)
-                {
-                    var changed = masterElement.UpdateCRC();
-                    if (changed)
-                    {
-                        // we modified an element, the OnChanged event will fire again
-                        // the CRC check will be continued when it is fired next
-                        break;
-                    }
-                }
+                RunDocumentEngines();
             }
         }
-        private void Document_OnElementAdded(MasterElement masterElement, BaseElement element)
+        /// <summary>
+        /// Run the document engines.<br/>
+        /// If the document has not changed, the engines will not run unless forceRun == true
+        /// </summary>
+        /// <param name="forceRun">Run even if the document has not changed</param>
+        /// <exception cref="Exception"></exception>
+        public void RunDocumentEngines(bool forceRun = false)
         {
-            Console.WriteLine($"DOC: Document_OnElementAdded: {element.Name} {element.Path}");
-        }
-        private void Document_OnElementRemoved(MasterElement masterElement, BaseElement element)
-        {
-            Console.WriteLine($"DOC: Document_OnElementRemoved: {element.Depth} {masterElement.Path}\\{element.Name}");
+            if (!DocumentEnginesRunning)
+            {
+                DocumentEnginesRunning = true;
+                var sw = Stopwatch.StartNew();
+                var iterations = 0;
+                try
+                {
+                    if (forceRun) unhandledChanges++;
+                    while (unhandledChanges > 0)
+                    {
+                        unhandledChanges = 0;
+                        var changeEventBackLog = ChangeEventBackLog;
+                        ChangeEventBackLog = new List<IEnumerable<BaseElement>>();
+                        foreach (var documentEngine in DocumentEngines.Values)
+                        {
+                            var swe = Stopwatch.StartNew();
+                            var unhandledChangesThis = unhandledChanges;
+                            // this tells the document engine that the document has been modified nad gives it a chance to makes updates
+                            // if it does make changes all document engines will get another chance to run until none of them makes any changes
+                            documentEngine.DocumentCheck(changeEventBackLog);
+                            var changeCount = unhandledChanges - unhandledChangesThis;
+                            Console.WriteLine($"Engine {iterations} iteration {documentEngine.GetType().Name}: {changeCount} changes {sw.Elapsed.Milliseconds} run time");
+                        }
+                        iterations++;
+                        if (iterations > 16)
+                        {
+                            Log("The document engines have iterated more than 16 times. Exiting run.");
+                            break;
+                        }
+                    }
+                }
+                finally
+                {
+                    Console.WriteLine($"Engines took: {iterations} iterations {sw.Elapsed.Milliseconds} run time");
+                    DocumentEnginesRunning = false;
+                }
+            }
         }
         /// <summary>
         /// This initializes a very minimal EBML document based on the current DocType
@@ -117,8 +187,8 @@ namespace SpawnDev.EBML
         {
             // - create EBML header based on DocType
             var ebmlHeader = AddContainer("EBML")!;
-            var strEl = ebmlHeader.AddString("DocType", docType);
-            if (SchemaSet.Schemas.TryGetValue(docType, out var schema))
+            var strEl = ebmlHeader.AddASCII("DocType", docType);
+            if (Parser.Schemas.TryGetValue(docType, out var schema))
             {
                 var version = uint.TryParse(schema.Version, out var ver) ? ver : 1;
                 ebmlHeader.AddUint("DocTypeVersion", version);

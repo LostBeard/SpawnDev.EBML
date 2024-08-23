@@ -2,13 +2,11 @@
 using BlazorEBMLViewer.Layout;
 using BlazorEBMLViewer.Services;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
 using Radzen;
 using SpawnDev.BlazorJS;
 using SpawnDev.BlazorJS.JSObjects;
 using SpawnDev.BlazorJS.Toolbox;
 using SpawnDev.EBML;
-using SpawnDev.EBML.Elements;
 using SpawnDev.EBML.Elements;
 using File = SpawnDev.BlazorJS.JSObjects.File;
 
@@ -20,8 +18,8 @@ namespace BlazorEBMLViewer.Pages
         public SpawnDev.EBML.Document? Document { get; set; }
         public string? ActiveContainerTypeName => ActiveContainer?.GetType().Name;
         public MasterElement? ActiveContainer { get; set; }
-        public string Path => ActiveContainer?.Path ?? "";
-        bool CanGoUp => Path.Split('\\', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Length > 0;
+        public string Path => ActiveContainer?.InstancePath ?? "";
+        bool CanGoUp => ActiveContainer?.Parent != null;
         [Inject]
         BlazorJSRuntime JS { get; set; }
         [Inject]
@@ -53,7 +51,7 @@ namespace BlazorEBMLViewer.Pages
             DocumentBusy = true;
             StateHasChanged();
             await Task.Delay(50);
-            Document = new SpawnDev.EBML.Document(schema.DocType, EBMLSchemaService.SchemaSet, filename);
+            Document = EBMLSchemaService.Parser.CreateDocument(schema.DocType, filename);
             Document.OnElementAdded += Document_OnElementAdded;
             Document.OnElementRemoved += Document_OnElementRemoved;
             Document.OnChanged += Document_OnChanged;
@@ -61,7 +59,7 @@ namespace BlazorEBMLViewer.Pages
             ActiveContainer = Document;
             DocumentBusy = false;
             StateHasChanged();
-            await SetPath(@"\\");
+            await SetPath(Document);
         }
         private void Document_OnChanged(IEnumerable<BaseElement> elements)
         {
@@ -90,16 +88,24 @@ namespace BlazorEBMLViewer.Pages
             DocumentBusy = true;
             StateHasChanged();
             await Task.Delay(50);
-            var element = Document?.GetContainer(path);
-            if (element is MasterElement source)
+            if (string.IsNullOrEmpty(path) || path.Trim(EBMLParser.PathDelimiters) == "")
             {
-                ActiveContainer = source;
+                await SetPath(Document);
+            }
+            else
+            {
+                var element = Document?.GetContainer(path);
+                if (element != null)
+                {
+                    await SetPath(element);
+                }
             }
             DocumentBusy = false;
             StateHasChanged();
         }
         async Task SetPath(BaseElement element)
         {
+            if (element == null) return;
             DocumentBusy = true;
             StateHasChanged();
             await Task.Delay(50);
@@ -112,10 +118,10 @@ namespace BlazorEBMLViewer.Pages
         }
         async Task GoUp()
         {
-            var parts = Path.Split('\\', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            if (parts.Length == 0) return;
-            var newPath = "\\" + string.Join('\\', parts.Take(parts.Length - 1));
-            await SetPath(newPath);
+            if (ActiveContainer?.Parent != null)
+            {
+                await SetPath(ActiveContainer.Parent);
+            }
         }
         IEnumerable<ContextMenuItem> GetAddElementOptions()
         {
@@ -158,14 +164,16 @@ namespace BlazorEBMLViewer.Pages
         }
         void AddElementClicked(MenuItemEventArgs args)
         {
-            if (ActiveContainer == null) return;
+            if (ActiveContainer == null || Document == null) return;
             ContextMenuService.Close();
             if (args.Value is List<SchemaElement> missing)
             {
+                Document.DisableDocumentEngines();
                 foreach (var addable in missing)
                 {
                     ActiveContainer.AddElement(addable);
                 }
+                Document.EnabledDocumentEngines();
             }
             else if (args.Value is SchemaElement addable)
             {
@@ -212,12 +220,12 @@ namespace BlazorEBMLViewer.Pages
             await Task.Delay(50);
             var arrayBuffer = await file.ArrayBuffer();
             var fileStream = new ArrayBufferStream(arrayBuffer);
-            Document = new SpawnDev.EBML.Document(fileStream, EBMLSchemaService.SchemaSet, file.Name);
+            Document = EBMLSchemaService.Parser.ParseDocument(fileStream, file.Name);
             MainLayoutService.Title = file.Name;
             ActiveContainer = Document;
             DocumentBusy = false;
             StateHasChanged();
-            await SetPath(@"\\");
+            await SetPath(Document);
         }
         async Task GridRowContextMenu(RowContextMenuArgs args)
         {
@@ -284,12 +292,12 @@ namespace BlazorEBMLViewer.Pages
                 using var f = await file.GetFile();
                 using var arrayBuffer = await f.ArrayBuffer();
                 var fileStream = new ArrayBufferStream(arrayBuffer);
-                Document = new SpawnDev.EBML.Document(fileStream, EBMLSchemaService.SchemaSet, file.Name);
+                Document = EBMLSchemaService.Parser.ParseDocument(fileStream, file.Name);
                 MainLayoutService.Title = file.Name;
                 ActiveContainer = Document;
                 DocumentBusy = false;
                 StateHasChanged();
-                await SetPath(@"\\");
+                await SetPath(Document);
             }
             finally
             {

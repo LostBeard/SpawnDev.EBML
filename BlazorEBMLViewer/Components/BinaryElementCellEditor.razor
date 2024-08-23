@@ -24,9 +24,9 @@
             mem.Position = 0;
             var length = mem.Length;
             // If this is:
-            // \Segment\Attachments\AttachedFile\FileData
+            // /Segment/Attachments/AttachedFile/FileData
             // then the filename is located here
-            // \Segment\Attachments\AttachedFile\FileName
+            // /Segment/Attachments/AttachedFile/FileName
             var filename = Element.Parent!.ReadString("FileName");
             if (string.IsNullOrWhiteSpace(filename))
             {
@@ -53,7 +53,7 @@
         var filename = file.Name;
         // offer to set the filename field if it exists
         var fileNameElement = Element.Parent!.GetElement<UTF8Element>("FileName");
-        var isMkvAttachedFile = Element.Path == @"\Segment\Attachments\AttachedFile\FileData";
+        var isMkvAttachedFile = Element.Path == @"/Segment/Attachments/AttachedFile/FileData";
         if (fileNameElement != null || isMkvAttachedFile)
         {
             var confirm = await DialogService.Confirm("Set FileName field?");

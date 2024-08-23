@@ -10,14 +10,18 @@ namespace SpawnDev.EBML.Elements
     public abstract class BaseElement
     {
         /// <summary>
+        /// The byte offset of this elements data from the document root
+        /// </summary>
+        public ulong DataOffset => Offset + HeaderSize;
+        /// <summary>
         /// The byte offset from the document root
         /// </summary>
         public ulong Offset
         {
             get
             {
+                if (Parent == null) return 0;
                 var index = Index;
-                if (index < 0) return 0;
                 ulong offset = 0;
                 BaseElement prev = index == 0 ? Parent! : Parent!.Data.ElementAt(index - 1);
                 if (index == 0)
@@ -36,9 +40,13 @@ namespace SpawnDev.EBML.Elements
         /// </summary>
         public ElementDataSource Source { get; protected set; }
         /// <summary>
-        /// Element index in its container
+        /// Element index of this element in Parent.Data
         /// </summary>
-        public int Index => Parent == null ? -1 : Parent.GetChildIndex(this);
+        public int Index => Parent == null ? 0 : Parent.GetChildIndex(this);
+        /// <summary>
+        /// Element index of this element in Parent.Data.Where(o => o.Name == this.Name)
+        /// </summary>
+        public int TypeIndex => Parent == null ? 0 : Parent.GetTypeIndex(this);
         /// <summary>
         /// Schema element type:<br/>
         /// - uinteger<br/>
@@ -105,11 +113,11 @@ namespace SpawnDev.EBML.Elements
         /// - Root elements = 0<br/>
         /// - Top level = 1<br/>
         /// </summary>
-        public int Depth => Path.Split('\\', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Length - 1;
+        public int Depth => Path.Split(EBMLParser.PathDelimiters, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Length - 1;
         /// <summary>
         /// Element name
         /// </summary>
-        public string? Name => SchemaElement?.Name ?? (Id == 0 ? "" : $"{Id}");
+        public string Name => SchemaElement?.Name ?? (Id == 0 ? "" : $"{Id}");
         /// <summary>
         /// Element header size + element data size
         /// </summary>
@@ -155,7 +163,15 @@ namespace SpawnDev.EBML.Elements
         /// <summary>
         /// Element path
         /// </summary>
-        public virtual string Path => Parent == null ? $@"\{Name}" : $@"{Parent.Path.TrimEnd('\\')}\{Name}";
+        public virtual string Path => Parent == null ? $@"{EBMLParser.PathDelimiter}{Name}" : $@"{Parent.Path.TrimEnd(EBMLParser.PathDelimiters)}{EBMLParser.PathDelimiter}{Name}";
+        /// <summary>
+        /// Element Name with type index
+        /// </summary>
+        public virtual string InstanceName => SchemaElement != null && SchemaElement.MaxOccurs == 1 ? Name : $"{Name}{EBMLParser.IndexDelimiter}{TypeIndex}";
+        /// <summary>
+        /// Element Path with type index
+        /// </summary>
+        public virtual string InstancePath => Parent == null ? $@"{EBMLParser.PathDelimiter}{InstanceName}" : $@"{Parent.InstancePath.TrimEnd(EBMLParser.PathDelimiters)}{EBMLParser.PathDelimiter}{InstanceName}";
         /// <summary>
         /// protected SegmentSource
         /// </summary>
@@ -180,20 +196,38 @@ namespace SpawnDev.EBML.Elements
                 StreamChanged();
             }
         }
-        private MasterElement? GetRootLevelElement()
+        /// <summary>
+        /// Returns the last ancestor which may or may not be a Document
+        /// </summary>
+        /// <returns></returns>
+        public MasterElement? LastAncestor => Ancestors.LastOrDefault();
+        /// <summary>
+        /// Returns this element's ancestors which may or may not end in a Document
+        /// </summary>
+        /// <returns></returns>
+        public IEnumerable<MasterElement> Ancestors
         {
-            MasterElement? ret = Parent;
-            while (ret?.Parent != null)
+            get
             {
-                ret = ret.Parent;
+                var list = new List<MasterElement>();
+                BaseElement? ret = this;
+                while (ret.Parent != null)
+                {
+                    list.Add(ret.Parent);
+                    ret = ret.Parent;
+                }
+                return list;
             }
-            return ret;
         }
+        /// <summary>
+        /// Child elements of this element
+        /// </summary>
+        public virtual IEnumerable<BaseElement> Children => Array.Empty<BaseElement>();
         /// <summary>
         /// Returns the EBMLDocument this element belongs to or null
         /// </summary>
         /// <returns></returns>
-        public Document? GetDocumentElement() => GetRootLevelElement() as Document;
+        public Document? Document => this is Document documentElement ? documentElement : LastAncestor as Document;
         /// <summary>
         /// Fired when the stream data has been set
         /// </summary>
