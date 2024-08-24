@@ -37,7 +37,7 @@ namespace SpawnDev.EBML.Elements
             stream.WriteEBMLElementIdRaw(Id, IdMinOctets);
             stream.WriteEBMLElementSize(Size, SizeMinOctets);
             stream.Position = 0;
-            var ret = new StreamSegment(stream, true);
+            var ret = new StreamSegment(stream);
             return ret;
         }
         public ElementHeader(ulong id, ulong? size, int idMinOctets = 0, int sizeMinOctets = 0)

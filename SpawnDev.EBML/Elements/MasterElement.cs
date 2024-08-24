@@ -243,7 +243,7 @@ namespace SpawnDev.EBML.Elements
         /// <param name="source">Element binary data source as a SegmentSource</param>
         /// <param name="header">Header element if available</param>
         /// <returns>The new element</returns>
-        public BaseElement Create(SchemaElement schemaElement, SegmentSource source, ElementHeader? header = null)
+        public BaseElement CreateElement(SchemaElement schemaElement, SegmentSource source, ElementHeader? header = null)
         {
             if (schemaElement == null) throw new NullReferenceException(nameof(schemaElement));
             var type = Parser.GetElementType(schemaElement.Type);
@@ -939,7 +939,7 @@ namespace SpawnDev.EBML.Elements
                 }
                 else
                 {
-                    element = Create(schemaElement, elementSegmentSource, elementHeader);
+                    element = CreateElement(schemaElement, elementSegmentSource, elementHeader);
                     if (element == null)
                     {
                         element = new BinaryElement(schemaElement, source, elementHeader);

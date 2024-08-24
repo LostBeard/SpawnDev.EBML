@@ -1,14 +1,87 @@
 ﻿
 using System.Buffers;
-using System.Threading;
 
 namespace SpawnDev.EBML.Segments
 {
-    public class MultiStreamSegment : SegmentSource<Stream[]>
+    public class MultiStreamSegment : SegmentSource
     {
+        public List<Stream> Source { get; } = new List<Stream>();
         #region Constructors
-        public MultiStreamSegment(IEnumerable<byte[]> source, bool ownsSource = false) : base(source.Select(o => new MemoryStream(o)).ToArray(), 0, source.Sum(o => o.Length), ownsSource) { }
-        public MultiStreamSegment(IEnumerable<Stream> source, bool ownsSource = false) : base(source.ToArray(), 0, source.Sum(o => o.Length), ownsSource) { }
+        public override long Length => Source.Sum(x => x.Length);
+        public MultiStreamSegment(IEnumerable<byte[]> source) : base(0, source.Sum(o => o.Length))
+        {
+            Source.AddRange(source.Select(o => new MemoryStream(o)));
+            SourceObject = source;
+        }
+        public MultiStreamSegment(IEnumerable<Stream> source) : base(0, source.Sum(o => o.Length))
+        {
+            Source.AddRange(source);
+            SourceObject = source;
+        }
+        public MultiStreamSegment(Stream source) : base(0, source.Length)
+        {
+            Source.Add(source);
+            SourceObject = source;
+        }
+        public MultiStreamSegment(byte[] source) : base(0, source.Length)
+        {
+            Source.Add(new MemoryStream(source));
+            SourceObject = source;
+        }
+        //
+        public MultiStreamSegment(IEnumerable<byte[]> source, long offset) : base(offset, source.Sum(o => o.Length) - offset)
+        {
+            Source.AddRange(source.Select(o => new MemoryStream(o)));
+            SourceObject = source;
+        }
+        public MultiStreamSegment(IEnumerable<Stream> source, long offset) : base(0, source.Sum(o => o.Length) - offset)
+        {
+            Source.AddRange(source);
+            SourceObject = source;
+        }
+        public MultiStreamSegment(Stream source, long offset) : base(0, source.Length - offset)
+        {
+            Source.Add(source);
+            SourceObject = source;
+        }
+        public MultiStreamSegment(byte[] source, long offset) : base(0, source.Length - offset)
+        {
+            Source.Add(new MemoryStream(source));
+            SourceObject = source;
+        }
+        //
+        //
+        public MultiStreamSegment(IEnumerable<byte[]> source, long offset, long size) : base(offset, Math.Min(size, source.Sum(o => o.Length) - offset))
+        {
+            Source.AddRange(source.Select(o => new MemoryStream(o)));
+            SourceObject = source;
+        }
+        public MultiStreamSegment(IEnumerable<Stream> source, long offset, long size) : base(0, Math.Min(size, source.Sum(o => o.Length) - offset))
+        {
+            Source.AddRange(source);
+            SourceObject = source;
+        }
+        public MultiStreamSegment(Stream source, long offset, long size) : base(0, source.Length - offset)
+        {
+            Source.Add(source);
+            SourceObject = source;
+        }
+        public MultiStreamSegment(byte[] source, long offset, long size) : base(0, source.Length - offset)
+        {
+            Source.Add(new MemoryStream(source));
+            SourceObject = source;
+        }
+        //
+        public MultiStreamSegment() : base(0, 0)
+        {
+
+        }
+        public virtual SegmentSource Slice(long offset, long size)
+        {
+            var slice = (SegmentSource)Activator.CreateInstance(GetType(), SourceObject, Offset + offset, size)!;
+            if (slice.Position != 0) slice.Position = 0;
+            return slice;
+        }
         #endregion
         public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
@@ -30,12 +103,12 @@ namespace SpawnDev.EBML.Segments
             var bytesReadTotal = 0;
             var positions = Source.Select(o => o.Position).ToArray();
             source.Position = currentOffset;
-            while (sourceIndex < Source.Length && bytesLeft > 0)
+            while (sourceIndex < Source.Count && bytesLeft > 0)
             {
                 var sourceBytesLeft = source.Length - source.Position;
                 while (sourceBytesLeft <= 0)
                 {
-                    if (sourceIndex >= Source.Length - 1) goto LoopEnd;
+                    if (sourceIndex >= Source.Count - 1) goto LoopEnd;
                     sourceIndex++;
                     source = Source[sourceIndex];
                     source.Position = 0;
@@ -48,9 +121,9 @@ namespace SpawnDev.EBML.Segments
                 if (bytesRead <= 0 || bytesLeft <= 0) break;
             }
         LoopEnd:
-            SourcePosition += bytesReadTotal;
+            Position += bytesReadTotal;
             // restore stream positions
-            for (var i = 0; i < Source.Length; i++)
+            for (var i = 0; i < Source.Count; i++)
             {
                 Source[i].Position = positions[i];
             }
@@ -76,12 +149,12 @@ namespace SpawnDev.EBML.Segments
             var bytesReadTotal = 0;
             var positions = Source.Select(o => o.Position).ToArray();
             source.Position = currentOffset;
-            while (sourceIndex < Source.Length && bytesLeft > 0)
+            while (sourceIndex < Source.Count && bytesLeft > 0)
             {
                 var sourceBytesLeft = source.Length - source.Position;
                 while (sourceBytesLeft <= 0)
                 {
-                    if (sourceIndex >= Source.Length - 1) goto LoopEnd;
+                    if (sourceIndex >= Source.Count - 1) goto LoopEnd;
                     sourceIndex++;
                     source = Source[sourceIndex];
                     source.Position = 0;
@@ -93,10 +166,10 @@ namespace SpawnDev.EBML.Segments
                 bytesLeft -= bytesRead;
                 if (bytesRead <= 0 || bytesLeft <= 0) break;
             }
-            LoopEnd:
-            SourcePosition += bytesReadTotal;
+        LoopEnd:
+            Position += bytesReadTotal;
             // restore stream positions
-            for (var i = 0; i < Source.Length; i++)
+            for (var i = 0; i < Source.Count; i++)
             {
                 Source[i].Position = positions[i];
             }
