@@ -1,6 +1,8 @@
 ﻿using SpawnDev.EBML.Elements;
+using SpawnDev.EBML.Extensions;
+using SpawnDev.PatchStreams;
 using System.Reflection;
-using System.Xml.Linq;
+using System.Reflection.PortableExecutable;
 
 namespace SpawnDev.EBML
 {
@@ -218,9 +220,30 @@ namespace SpawnDev.EBML
                 var nmt = true;
             }
             var parentPath = parent.Path;
-            var parentMasterName = parent.Name;
             var path = $@"{parentPath.TrimEnd(EBMLParser.PathDelimiters)}{EBMLParser.PathDelimiter}{elementName}";
             var depth = parent.Depth + 1;
+            if (path == schemaElement.Path)
+            {
+                return true;
+            }
+            else if (schemaElement.MinDepth > depth)
+            {
+                return false;
+            }
+            else if (path == schemaElement.Path.Replace("+", ""))
+            {
+                // TODO - better check than this
+                // this won't work for nested which is what + indicates is possible
+                // Tags
+                return true;
+            }
+            return schemaElement.IsGlobal;
+        }
+        public bool CheckParent(string parentPath, SchemaElement schemaElement)
+        {
+            if (parentPath == null || schemaElement == null) return false;
+            var path = $@"{parentPath.TrimEnd(EBMLParser.PathDelimiters)}{EBMLParser.PathDelimiter}{schemaElement.Name}";
+            var depth = parentPath.Split(EBMLParser.PathDelimiters, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Length + 1;
             if (path == schemaElement.Path)
             {
                 return true;
@@ -264,7 +287,7 @@ namespace SpawnDev.EBML
         /// <summary>
         /// Register a document engine that can handle document events and provide additional tools for a document
         /// </summary>
-        public void RegisterDocumentEngine(Type engineType) 
+        public void RegisterDocumentEngine(Type engineType)
         {
             var ebmlDocumentParserInfo = new DocumentEngineInfo(engineType);
             _EBMLDocumentEngines.Add(ebmlDocumentParserInfo);
@@ -288,7 +311,7 @@ namespace SpawnDev.EBML
         /// <summary>
         /// Register a document engine that can handle document events and provide additional tools for a document
         /// </summary>
-        public void RegisterDocumentEngine(Type engineType, Func<Document, DocumentEngine> factory) 
+        public void RegisterDocumentEngine(Type engineType, Func<Document, DocumentEngine> factory)
         {
             var ebmlDocumentParserInfo = new DocumentEngineInfo(engineType, factory);
             _EBMLDocumentEngines.Add(ebmlDocumentParserInfo);
@@ -325,11 +348,10 @@ namespace SpawnDev.EBML
         {
             try
             {
-                using (Stream stream = assembly.GetManifestResourceStream(resourceName)!)
-                using (StreamReader reader = new StreamReader(stream))
-                {
-                    return reader.ReadToEnd();
-                }
+                using var stream = assembly.GetManifestResourceStream(resourceName);
+                if (stream == null) return null;
+                using var reader = new StreamReader(stream);
+                return reader.ReadToEnd();
             }
             catch
             {
@@ -337,5 +359,222 @@ namespace SpawnDev.EBML
             }
         }
         private List<DocumentEngineInfo> _EBMLDocumentEngines { get; } = new List<DocumentEngineInfo>();
+        public IEnumerable<(ElementHeader, SchemaElement)> GetElementHeaders(Stream stream)
+        {
+            var parsingDocType = EBML;
+            stream.Position = 0;
+            while (stream.CanRead && stream.Position < stream.Length)
+            {
+                ElementHeader? elementHeader = null;
+                try
+                {
+                    elementHeader = ElementHeader.Read(stream);
+                }
+                catch { }
+                if (elementHeader == null) break;
+                var schemaElement = GetElement(elementHeader.Id, parsingDocType);
+                if (schemaElement == null)
+                {
+                    break;
+                }
+                yield return (elementHeader, schemaElement);
+            }
+        }
+        //private class MasterElementInfo
+        //{
+        //    public Dictionary<ulong, int> Counts = new Dictionary<ulong, int>();
+        //    public int Seen(ulong id)
+        //    {
+        //        if (!Counts.TryGetValue(id, out var count))
+        //        {
+        //            Counts.Add(id, 0);
+        //        }
+        //        return Counts[id]++;
+        //    }
+        //    public Element MasterElement { get; set; }
+        //}
+        //public IEnumerable<Element> GetElementInfos(PatchStream stream, string path)
+        //{
+        //    var parts = path.TrimStart('/').Split('/', StringSplitOptions.TrimEntries);
+        //    if (!parts.Any()) yield break;
+        //    var parsingDocType = EBML;
+        //    stream.Position = 0;
+        //    var currentIndex = -1;
+        //    var i = 0;
+        //    var part = parts[i];
+        //    var partIndex = 0;
+        //    var partParts = part.Split(IndexDelimiter);
+        //    if (partParts.Length > 1)
+        //    {
+        //        part = partParts[0];
+        //        partIndex = int.Parse(partParts[1]);
+        //    }
+        //    var partId = !part.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? 0 : EBMLConverter.ElementIdFromHexId(part);
+        //    var partType = part.StartsWith("@") ? part.Substring(1) : "";
+        //    var endPos = stream.Length;
+        //    var patchId = stream.PatchId;
+        //    var stack = new List<MasterElementInfo>
+        //    {
+        //        new MasterElementInfo
+        //        {
+        //            MasterElement = new Element
+        //            {
+        //                Offset = 0,
+        //                Id = 0,
+        //                Path = "/",
+        //                InstancePath = "/",
+        //                Size = (ulong)stream.Length,
+        //                DataOffset = 0,
+        //                PatchStream = stream,
+        //                PatchId =patchId,
+        //                MaxSize = stream.Length,
+        //                EBMLParser = this,
+        //            }
+        //        }
+        //    };
+        //    var isLastPart = i == parts.Length - 1;
+        //    MasterElementInfo? targetParent = null;
+        //    MasterElementInfo? parent;
+        //    while (stream.CanRead && stream.Position < endPos && (parent = stack.LastOrDefault()) != null)
+        //    {
+        //        var position = stream.Position;
+        //        ulong id;
+        //        ulong? size;
+        //        try
+        //        {
+        //            id = stream.ReadEBMLElementIdRaw();
+        //            size = stream.ReadEBMLElementSizeN();
+        //        }
+        //        catch
+        //        {
+        //            break;
+        //        }
+        //        var streamBytesLeft = stream.Length - stream.Position;
+        //        var headerSize = stream.Position - position;
+        //        var dataPosition = stream.Position;
+        //        var maxDataSize = size != null ? (long)size.Value : streamBytesLeft;
+        //        var schemaElement = GetElement(id, parsingDocType);
+        //        if (schemaElement == null)
+        //        {
+        //            break;
+        //        }
+        //        if (parsingDocType == EBML && schemaElement.Name == "DocType")
+        //        {
+        //            parsingDocType = stream.ReadEBMLStringASCII((int)size!.Value);
+        //        }
+        //        while (!CheckParent(parent.MasterElement!.Path, schemaElement) && stack.Count > 0)
+        //        {
+        //            if (isLastPart) yield break;
+        //            stack.Remove(parent);
+        //            parent = stack.LastOrDefault();
+        //            if (parent == null)
+        //            {
+        //                yield break;
+        //                // invalid root element
+        //            }
+        //        }
+        //        var typeIndex = parent.Seen(id);
+        //        var el = new MasterElementInfo
+        //        {
+        //            MasterElement = new Element
+        //            {
+        //                Offset = position,
+        //                Id = id,
+        //                Path = $"{parent.MasterElement.Path.TrimEnd(PathDelimiters)}{PathDelimiter}{schemaElement.Name}",
+        //                InstancePath = $"{parent.MasterElement.InstancePath.TrimEnd(PathDelimiters)}{PathDelimiter}{schemaElement.Name},{typeIndex}",
+        //                Size = size,
+        //                DataOffset = stream.Position,
+        //                PatchStream = stream,
+        //                PatchId = patchId,
+        //                MaxSize = size != null ? (long)size.Value : streamBytesLeft,
+        //                SchemaElement = schemaElement,
+        //                EBMLParser = this,
+        //            }
+        //        };
+        //        var name = schemaElement.Name;
+        //        // The end of an Unknown - Sized Element is determined by whichever comes first:
+        //        // - Any EBML Element that is a valid Parent Element of the Unknown - Sized Element according to the EBML Schema, Global Elements excluded.
+        //        // - Any valid EBML Element according to the EBML Schema, Global Elements excluded, that is not a Descendant Element of the Unknown-Sized Element but shares a common direct parent, such as a Top - Level Element.
+        //        // - Any EBML Element that is a valid Root Element according to the EBML Schema, Global Elements excluded.
+        //        // - The end of the Parent Element with a known size has been reached.
+        //        // - The end of the EBML Document, either when reaching the end of the file or because a new EBML Header started.
+        //        var skipMaster = true;
+        //        if ((partId > 0 && partId == id) || (!string.IsNullOrWhiteSpace(partType) && partType == schemaElement.Type) || part == name || part == "")
+        //        {
+        //            currentIndex++;
+        //            if (partIndex == currentIndex || partIndex == -1)
+        //            {
+        //                if (isLastPart)
+        //                {
+        //                    if (parent == targetParent)
+        //                    {
+        //                        var pos = stream.Position;
+        //                        yield return el.MasterElement;
+        //                        stream.Position = pos;
+        //                    }
+        //                    else
+        //                    {
+        //                        var nmttt = true;
+        //                    }
+        //                }
+        //                else if (schemaElement.Type == "master")
+        //                {
+        //                    skipMaster = false;
+        //                    currentIndex = -1;
+        //                    i++;
+        //                    isLastPart = i == parts.Length - 1;
+        //                    if (isLastPart)
+        //                    {
+        //                        targetParent = el;
+        //                    }
+        //                    part = parts[i];
+        //                    partIndex = 0;
+        //                    partParts = part.Split(IndexDelimiter);
+        //                    if (partParts.Length > 1)
+        //                    {
+        //                        part = partParts[0];
+        //                        partIndex = int.Parse(partParts[1]);
+        //                    }
+        //                    else if (isLastPart)
+        //                    {
+        //                        // no index specified
+        //                        partIndex = -1;
+        //                    }
+        //                    partId = !part.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? 0 : EBMLConverter.ElementIdFromHexId(part);
+        //                    partType = part.StartsWith("@") ? part.Substring(1) : "";
+        //                }
+        //            }
+        //        }
+        //        if (schemaElement.Type == "master")
+        //        {
+        //            if (name != "EBML" && skipMaster && size != null)
+        //            {
+        //                // we can only skip this if it does not match our filter
+        //                stream.Position = dataPosition + (long)size.Value;
+        //            }
+        //            else
+        //            {
+        //                // has to be iterated
+        //                stack.Add(el);
+        //            }
+        //        }
+        //        else
+        //        {
+        //            // skip data
+        //            stream.Position = dataPosition + (long)size.Value;
+        //        }
+
+        //        while (parent.MasterElement.MaxSize + parent.MasterElement.DataOffset <= stream.Position)
+        //        {
+        //            if (isLastPart) yield break;
+        //            stack.Remove(parent);
+        //            parent = stack.LastOrDefault();
+        //            if (parent == null)
+        //            {
+        //                yield break;
+        //            }
+        //        }
+        //    }
+        //}
     }
 }

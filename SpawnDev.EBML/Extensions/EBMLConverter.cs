@@ -1,9 +1,117 @@
 ﻿using System.Text;
+using System.Text.RegularExpressions;
 
 namespace SpawnDev.EBML.Extensions
 {
+    /// <summary>
+    /// Converter tools for EBML<br/>
+    /// </summary>
     public static class EBMLConverter
     {
+        static Regex PathPartRegex = new Regex(@"^(.*?)(?:,([0-9-]*))?$", RegexOptions.Compiled);
+        static Regex PathFromInstancePathRegex = new Regex(@",[0-9-]*", RegexOptions.Compiled);
+        /// <summary>
+        /// Returns a name index pair fro ma name. Used for name matching with Find
+        /// </summary>
+        /// <param name="nameIn"></param>
+        /// <param name="name"></param>
+        /// <param name="index"></param>
+        /// <param name="defaultIndexAll">If true, and no index is found in [name] then -1 is returned which maxes all indexes</param>
+        public static void NameToNameIndex(string nameIn, out string name, out int index, bool defaultIndexAll = true)
+        {
+            var m = PathPartRegex.Match(nameIn);
+            if (m.Success)
+            {
+                index = m.Groups.Count == 2 ? int.Parse(m.Groups[2].Value) : 0;
+                name = m.Groups[1].Value;
+            }
+            else
+            {
+                name = nameIn; 
+                index = defaultIndexAll ? - 1 : 0;
+            }
+        }
+        /// <summary>
+        /// Removes instance indexes fro mn instance path leaving only the element's non-indexed path
+        /// </summary>
+        /// <param name="instancePath"></param>
+        /// <returns></returns>
+        public static string PathFromInstancePath(string instancePath)
+        {
+            return PathFromInstancePathRegex.Replace(instancePath, "");
+        }
+        /// <summary>
+        /// Converts an EBML instance path 
+        /// Ex: (/[ELEMENT_NAME],[INDEX]/[ELEMENT_NAME],[INDEX]/[ELEMENT_NAME],[INDEX])
+        /// to an EBML path 
+        /// Ex: (/[ELEMENT_NAME]/[ELEMENT_NAME]/[ELEMENT_NAME]) 
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        public static string PathParent(string path)
+        {
+            var parts = path.Split(EBMLParser.PathDelimiters);
+            parts = parts.Take(parts.Length - 1).ToArray();
+            var ret1 = string.Join(EBMLParser.PathDelimiter, parts);
+            return ret1;
+        }
+        /// <summary>
+        /// Converts an EBML path 
+        /// Ex: (/[ELEMENT_NAME]/[ELEMENT_NAME]/[ELEMENT_NAME]) 
+        /// to an EBML instance path 
+        /// Ex: (/[ELEMENT_NAME],[INDEX]/[ELEMENT_NAME],[INDEX]/[ELEMENT_NAME],[INDEX])
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        public static string PathToInstancePath(string path)
+        {
+            if (string.IsNullOrEmpty(path) || path == "/") return path;
+            var parts = path.Split(EBMLParser.PathDelimiters);
+            for (var i = 0; i < parts.Length; i++)
+            {
+                var part = parts[i];
+                if (part == "" && i == 0) continue;
+                var m = PathPartRegex.Match(part);
+                if (m.Success)
+                {
+                    int index = m.Groups.Count == 2 ? int.Parse(m.Groups[2].Value) : 0;
+                    var name = m.Groups[1].Value;
+                    parts[i] = $"{name}{EBMLParser.IndexDelimiter}{index}";
+                }
+                else
+                {
+                    throw new Exception("Invalid path");
+                }
+            }
+            var ret1 = string.Join(EBMLParser.PathDelimiter, parts);
+            return ret1;
+        }
+        /// <summary>
+        /// Returns the specified element id as a hex id string
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="prepend0x"></param>
+        /// <returns></returns>
+        public static string ElementIdToHexId(ulong id, bool prepend0x = true)
+        {
+            return prepend0x ? $"0x{Convert.ToHexString(EBMLConverter.ToUIntBytes(id))}" : Convert.ToHexString(EBMLConverter.ToUIntBytes(id));
+        }
+        /// <summary>
+        /// Returns the element id from the specified hex id string
+        /// </summary>
+        /// <param name="hexId"></param>
+        /// <returns></returns>
+        public static ulong ElementIdFromHexId(string hexId)
+        {
+            if (hexId == null) return 0;
+            if (hexId.StartsWith("0x")) hexId = hexId.Substring(2);
+            var idBytes = Convert.FromHexString(hexId).ToList();
+            idBytes.Reverse();
+            while (idBytes.Count < 8) idBytes.Add(0);
+            var id = BitConverter.ToUInt64(idBytes.ToArray());
+            return id;
+        }
         public static byte[] ToVINTBytes(ulong x, int minOctets = 0)
         {
             int bytes;

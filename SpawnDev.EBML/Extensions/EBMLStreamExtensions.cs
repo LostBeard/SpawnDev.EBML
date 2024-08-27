@@ -144,42 +144,6 @@ namespace SpawnDev.EBML.Extensions
             return -1;
         }
         public delegate bool ValidElementChildCheckDelegate(ulong[] parentIdChain, ulong childElementId);
-        public delegate bool ValidElementChildCheckEnumDelegate(Enum[] parentIdChain, Enum childElementId);
-        public static ulong ReadEBMLElementSize(this Stream data, ulong[] idChain, ValidElementChildCheckDelegate validChildCheck)
-        {
-            var size = data.ReadEBMLElementSize(out var isUnknownSize);
-            if (isUnknownSize)
-            {
-                size = data.DetermineEBMLElementSize(idChain, validChildCheck);
-            }
-            return size;
-        }
-        public static ulong DetermineEBMLElementSize(this Stream stream, Enum[] idChain, ValidElementChildCheckEnumDelegate validChildCheck)
-        {
-            long startOffset = stream.Position;
-            long pos = stream.Position;
-            var enumType = idChain[0].GetType();
-            while (true)
-            {
-                pos = stream.Position;
-                if (stream.Position >= stream.Length) break;
-                var id = stream.ReadEBMLElementId().ToEnum(enumType);
-                var len = stream.ReadEBMLElementSize(out var isUnknownSize);
-                var isAllowedChild = validChildCheck(idChain, id);
-                if (!isAllowedChild)
-                {
-                    break;
-                }
-                if (isUnknownSize)
-                {
-                    var childIdChain = idChain.Concat(new Enum[] { id }).ToArray();
-                    len = stream.DetermineEBMLElementSize(childIdChain, validChildCheck);
-                }
-                stream.Seek((long)len, SeekOrigin.Current);
-            }
-            stream.Position = startOffset;
-            return (ulong)(pos - startOffset);
-        }
         public static ulong DetermineEBMLElementSize(this Stream stream, ulong[] idChain, ValidElementChildCheckDelegate validChildCheck)
         {
             long startOffset = stream.Position;
@@ -289,18 +253,6 @@ namespace SpawnDev.EBML.Extensions
             }
             return BigEndian.ToUInt64(bytes);
         }
-        public static ulong ReadEBMLUInt(this Stream stream, long position, int size)
-        {
-            if (stream.Position != position) stream.Position = position;
-            var bytes = new byte[8];
-            var destIndex = 8 - size;
-            if (size > 0)
-            {
-                var cnt = stream.Read(bytes, destIndex, size);
-                if (cnt != size) throw new Exception("Not enough data");
-            }
-            return BigEndian.ToUInt64(bytes);
-        }
         public static long ReadEBMLInt(this Stream stream, int size)
         {
             var bytes = new byte[8];
@@ -330,17 +282,7 @@ namespace SpawnDev.EBML.Extensions
             return encoding.GetString(stream.ReadBytes(size, true)).TrimEnd('\0');
         }
         public static string ReadEBMLStringUTF8(this Stream stream, int size) => stream.ReadEBMLString(size, Encoding.UTF8);
-        public static string ReadEBMLStringUTF8(this Stream stream, long position, int size)
-        {
-            stream.Position = position;
-            return stream.ReadEBMLString(size, Encoding.UTF8);
-        }
         public static string ReadEBMLStringASCII(this Stream stream, int size) => stream.ReadEBMLString(size, Encoding.ASCII);
-        public static string ReadEBMLStringASCII(this Stream stream, long position, int size)
-        {
-            stream.Position = position;
-            return stream.ReadEBMLString(size, Encoding.ASCII);
-        }
         private static readonly double TimeScale = 1000000;
         public static readonly DateTime DateTimeReferencePoint = new DateTime(2001, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         public static DateTime ReadEBMLDate(this Stream stream, int size)
@@ -350,10 +292,5 @@ namespace SpawnDev.EBML.Extensions
             return DateTimeReferencePoint + TimeSpan.FromMilliseconds(timeOffset / TimeScale);
         }
         #endregion
-    }
-    public static class UInt64Extensions
-    {
-        public static Enum ToEnum(this ulong value, Type enumType) => (Enum)Enum.ToObject(enumType, value);
-        public static Enum[] ToEnum(this ulong[] values, Type enumType) => values.Select(o => o.ToEnum(enumType)).ToArray();
     }
 }
