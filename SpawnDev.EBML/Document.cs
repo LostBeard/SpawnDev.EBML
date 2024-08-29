@@ -15,10 +15,16 @@ namespace SpawnDev.EBML
         /// <summary>
         /// The latest element info
         /// </summary>
-        private ElementStreamInfo _Info = new ElementStreamInfo();
         private EBMLParser _Parser { get; set; }
         private PatchStream _Stream { get; set; }
+        /// <summary>
+        /// EBML Parser<br/>
+        /// May be shared between Documents
+        /// </summary>
         public override EBMLParser Parser => _Parser;
+        /// <summary>
+        /// The underlying PatchStream
+        /// </summary>
         public override PatchStream Stream => _Stream;
         /// <summary>
         /// Get or set the Filename. Used for informational purposes only.

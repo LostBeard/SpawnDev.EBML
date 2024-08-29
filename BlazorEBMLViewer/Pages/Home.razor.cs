@@ -8,6 +8,7 @@ using SpawnDev.BlazorJS.JSObjects;
 using SpawnDev.BlazorJS.Toolbox;
 using SpawnDev.EBML;
 using SpawnDev.EBML.Elements;
+using SpawnDev.EBML.Schemas;
 using File = SpawnDev.BlazorJS.JSObjects.File;
 
 namespace BlazorEBMLViewer.Pages
@@ -94,7 +95,7 @@ namespace BlazorEBMLViewer.Pages
             }
             else
             {
-                var element = Document?.GetContainer(path);
+                var element = Document?.FindMaster(path);
                 if (element != null)
                 {
                     await SetPath(element);

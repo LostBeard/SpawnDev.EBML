@@ -1,6 +1,6 @@
 ﻿using SpawnDev.BlazorJS;
-using SpawnDev.EBML;
 using SpawnDev.EBML.Elements;
+using SpawnDev.EBML.Schemas;
 
 namespace BlazorEBMLViewer.Services
 {

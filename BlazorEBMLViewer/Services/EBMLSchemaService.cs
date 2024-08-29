@@ -1,4 +1,5 @@
-﻿using SpawnDev.EBML;
+﻿using SpawnDev.EBML.Engines;
+using SpawnDev.EBML.Schemas;
 
 namespace BlazorEBMLViewer.Services
 {
@@ -9,7 +10,7 @@ namespace BlazorEBMLViewer.Services
         {
             Parser = new EBMLParser();
             Parser.LoadDefaultSchemas();
-            Parser.RegisterDocumentEngine<MatroskaDocumentEngine>();
+            Parser.RegisterDocumentEngine<MatroskaEngine>();
         }
     }
 }
