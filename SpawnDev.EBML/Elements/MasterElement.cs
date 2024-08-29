@@ -96,22 +96,6 @@ namespace SpawnDev.EBML.Elements
             else if (allowCreate) ret = AddString(name, value);
             return ret;
         }
-        //public override bool AddCRC()
-        //{
-        //    if (SchemaElement?.Type != "master") return false;
-        //    if (DocumentRoot) return false;
-        //    var crcElement = FindFirst("CRC-32");
-        //    if (crcElement != null) return true;
-        //    var crc = CalculateCRC();
-        //    var crc = AddElement<CRC32Element>(0);
-        //    return true;
-        //}
-        //public bool RemoveCRC()
-        //{
-        //    var crcElement = FindFirst("CRC-32");
-        //    crcElement?.Remove();
-        //    return crcElement != null;
-        //}
         /// <summary>
         /// Move [count] elements starting at index [start] to index [destination]<br/>
         /// If [destination] > the number of remaining elements after the selected range is removed, [destination] will be the number of elements left
@@ -453,18 +437,50 @@ namespace SpawnDev.EBML.Elements
         public IEnumerable<Element> Children => Find();
         public IEnumerable<MasterElement> Masters => Find<MasterElement>("@master");
         /// <summary>
-        /// Returns all string and utf-8 elements
+        /// Returns all the string and utf-8 elements in this element
         /// @strings - signifies `utf-8` and `string` strings. @string = `string` strings, and @utf-8 = `utf-8` strings
         /// </summary>
         public IEnumerable<StringElement> Strings => Find<StringElement>("@strings");
+        /// <summary>
+        /// Returns all the uinteger elements in this element
+        /// </summary>
         public IEnumerable<UintElement> Uints => Find<UintElement>("@uinteger");
+        /// <summary>
+        /// Returns all the integer elements in this element
+        /// </summary>
         public IEnumerable<IntElement> Ints => Find<IntElement>("@integer");
+        /// <summary>
+        /// Returns all the binary elements in this element
+        /// </summary>
         public IEnumerable<BinaryElement> Binaries => Find<BinaryElement>("@binary");
+        /// <summary>
+        /// Returns all the float elements in this element
+        /// </summary>
         public IEnumerable<FloatElement> Floats => Find<FloatElement>("@float");
+        /// <summary>
+        /// Returns all the date elements in this element
+        /// </summary>
         public IEnumerable<DateElement> Dates => Find<DateElement>("@date");
+        /// <summary>
+        /// Returns all the master elements that match the path filter
+        /// </summary>
         public MasterElement? FindMaster(string path) => First<MasterElement>(path);
+        /// <summary>
+        /// Returns all the master elements that match the path filter
+        /// </summary>
         public IEnumerable<MasterElement> FindMasters(string path) => Find<MasterElement>(path);
+        /// <summary>
+        /// Returns the first element that matches the path filter
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
         public Element? First(string path) => Find<Element>(path).FirstOrDefault();
+        /// <summary>
+        /// Returns the first element that matches the path filter
+        /// </summary>
+        /// <typeparam name="TElement"></typeparam>
+        /// <param name="path"></param>
+        /// <returns></returns>
         public TElement? First<TElement>(string path) where TElement : Element => Find<TElement>(path).FirstOrDefault();
         /// <summary>
         /// Search this element's children for elements with the name determined by the TElement type

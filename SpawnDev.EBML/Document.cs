@@ -12,9 +12,6 @@ namespace SpawnDev.EBML
     /// </summary>
     public partial class Document : MasterElement, IDisposable
     {
-        /// <summary>
-        /// The latest element info
-        /// </summary>
         private EBMLParser _Parser { get; set; }
         private PatchStream _Stream { get; set; }
         /// <summary>
@@ -65,14 +62,13 @@ namespace SpawnDev.EBML
             _Stream.OnChanged += _Stream_OnChanged;
             _Stream.OnRestorePointsChanged += _Stream_OnRestorePointsChanged;
             LoadEngines();
+            Stream.RestorePoint = true;
+            Info.PatchId = Stream.PatchId;
             if (!string.IsNullOrEmpty(docType))
             {
                 CreateDocument(docType);
                 _DocType = ReadString("/EBML/DocType");
             }
-            Stream.RestorePoint = true;
-            Info.PatchId = Stream.PatchId;
-            _DocType = ReadString("/EBML/DocType");
             Console.WriteLine($"DocType: {DocType}");
         }
         /// <summary>
@@ -89,8 +85,8 @@ namespace SpawnDev.EBML
             Info.Depth = -1;
             Info.DocumentOffset = stream.Position;
             Info.Exists = true;
-            _Parser = parser;
             Document = this;
+            _Parser = parser;
             _Stream = stream is PatchStream patchStream ? patchStream : new PatchStream(stream);
             _Stream.OnChanged += _Stream_OnChanged;
             _Stream.OnRestorePointsChanged += _Stream_OnRestorePointsChanged;
