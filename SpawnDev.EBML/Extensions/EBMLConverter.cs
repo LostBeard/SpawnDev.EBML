@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿using SpawnDev.EBML.Schemas;
+using System.IO;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace SpawnDev.EBML.Extensions
@@ -22,7 +24,7 @@ namespace SpawnDev.EBML.Extensions
             var m = PathPartRegex.Match(nameIn);
             if (m.Success)
             {
-                index = m.Groups.Count == 2 ? int.Parse(m.Groups[2].Value) : 0;
+                index = m.Groups.Count == 3 && m.Groups[2].Value.Length > 0 ? int.Parse(m.Groups[2].Value) : (defaultIndexAll ? -1 : 0);
                 name = m.Groups[1].Value;
             }
             else
@@ -30,6 +32,14 @@ namespace SpawnDev.EBML.Extensions
                 name = nameIn; 
                 index = defaultIndexAll ? - 1 : 0;
             }
+        }
+        public static void PathToParentInstancePathNameIndex(string path, out string parentInstancePath, out string name, out int index, bool defaultIndexAll = true)
+        {
+            //if (!path.StartsWith("/")) path = $"/{path}";
+            var parentPath = PathParent(path);
+            parentInstancePath = PathToInstancePath(parentPath);
+            var nameMaybeIndex= PathName(path);
+            NameToNameIndex(nameMaybeIndex, out name, out index, defaultIndexAll);
         }
         /// <summary>
         /// Removes instance indexes fro mn instance path leaving only the element's non-indexed path
@@ -41,19 +51,25 @@ namespace SpawnDev.EBML.Extensions
             return PathFromInstancePathRegex.Replace(instancePath, "");
         }
         /// <summary>
-        /// Converts an EBML instance path 
-        /// Ex: (/[ELEMENT_NAME],[INDEX]/[ELEMENT_NAME],[INDEX]/[ELEMENT_NAME],[INDEX])
-        /// to an EBML path 
-        /// Ex: (/[ELEMENT_NAME]/[ELEMENT_NAME]/[ELEMENT_NAME]) 
+        /// Returns the element name from the specified path
         /// </summary>
         /// <param name="path"></param>
         /// <returns></returns>
-        public static string PathParent(string path)
+        public static string PathName(string path)
         {
-            var parts = path.Split(EBMLParser.PathDelimiters);
-            parts = parts.Take(parts.Length - 1).ToArray();
-            var ret1 = string.Join(EBMLParser.PathDelimiter, parts);
-            return ret1;
+            return path.Substring(path.LastIndexOf("/") + 1);
+        }
+        /// <summary>
+        /// Returns the path parent
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        public static string PathParent(string path, bool prependDelimiter = true)
+        {
+            if (string.IsNullOrEmpty(path) || path == "/") return "";
+            var pos = path.LastIndexOf("/");
+            if (pos < 1) return "/";
+            return path.Substring(0, pos);
         }
         /// <summary>
         /// Converts an EBML path 
@@ -64,7 +80,7 @@ namespace SpawnDev.EBML.Extensions
         /// <param name="path"></param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-        public static string PathToInstancePath(string path)
+        public static string PathToInstancePath(string path, bool lastIndexDefaultsAll = false)
         {
             if (string.IsNullOrEmpty(path) || path == "/") return path;
             var parts = path.Split(EBMLParser.PathDelimiters);
@@ -75,7 +91,12 @@ namespace SpawnDev.EBML.Extensions
                 var m = PathPartRegex.Match(part);
                 if (m.Success)
                 {
-                    int index = m.Groups.Count == 2 ? int.Parse(m.Groups[2].Value) : 0;
+                    var index = lastIndexDefaultsAll ? -1 : 0;
+                    if (m.Groups.Count == 3 && !string.IsNullOrWhiteSpace(m.Groups[2].Value))
+                    {
+                        index = int.Parse(m.Groups[2].Value);
+                        var nmttt = true;
+                    }
                     var name = m.Groups[1].Value;
                     parts[i] = $"{name}{EBMLParser.IndexDelimiter}{index}";
                 }

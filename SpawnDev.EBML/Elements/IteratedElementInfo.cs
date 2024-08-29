@@ -1,4 +1,4 @@
-﻿namespace SpawnDev.EBML.Streams
+﻿namespace SpawnDev.EBML.Elements
 {
     /// <summary>
     /// Used internally when parsing a stream
@@ -17,7 +17,9 @@
         public int ChildCount => Counts.Values.Sum(o => o);
         public string Path { get; set; }
         public string InstancePath { get; set; }
-        public long MaxSize { get; set; }
+        public long MaxDataSize { get; set; }
         public long DataOffset { get; set; }
+        public bool UnknownSize { get; set; }
+        public int Depth { get; set; }
     }
 }

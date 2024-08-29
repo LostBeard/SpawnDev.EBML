@@ -1,21 +1,23 @@
 ﻿using SpawnDev.EBML.Extensions;
-using SpawnDev.EBML.Segments;
 using System.Text;
 
 namespace SpawnDev.EBML.Elements
 {
-    public class StringElement : BaseElement<string>
+    public class StringElement : Element
     {
-        public const string TypeName = "string";
-        public override string DataString
+        public string Data
         {
-            get => Data?.ToString() ?? "";
-            set => Data = value ?? "";
+            get
+            {
+                Stream.LatestStable.Position = DataOffset;
+                return IsUTF8 ? Stream.LatestStable.ReadEBMLStringUTF8((int)Size!.Value) : Stream.LatestStable.ReadEBMLStringASCII((int)Size!.Value);
+            }
+            set
+            {
+                ReplaceData((IsUTF8 ? Encoding.UTF8 : Encoding.ASCII).GetBytes(value ?? ""));
+            }
         }
-        public StringElement(SchemaElement schemaElement, SegmentSource source, ElementHeader? header = null) : base(schemaElement, source, header) { }
-        public StringElement(SchemaElement schemaElement, string value) : base(schemaElement, value) { }
-        public StringElement(SchemaElement schemaElement) : base(schemaElement, string.Empty) { }
-        protected override void DataFromSegmentSource(ref string data) => data = Encoding.UTF8.GetString(SegmentSource.ReadBytes(0, SegmentSource.Length, true));
-        protected override void DataToSegmentSource(ref SegmentSource source) => source = new ByteSegment(Encoding.ASCII.GetBytes(Data));
+        public bool IsUTF8 => SchemaElement?.Type == "utf-8";
+        public StringElement(Document document, ElementStreamInfo element) : base(document, element) { }
     }
 }

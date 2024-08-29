@@ -4,6 +4,19 @@ namespace SpawnDev.EBML.Extensions
 {
     internal static class EBMLStreamExtensions
     {
+        public static MemoryStream CreateEBMLHeader(ulong id, ulong size, int sizeMinOctets = 0)
+        {
+            var ret = new MemoryStream();
+            ret.WriteEBMLElementHeader(id, size, sizeMinOctets);
+            ret.Position = 0;
+            return ret;
+        }
+        public static int WriteEBMLElementHeader(this Stream _this, ulong id, ulong size, int sizeMinOctets = 0)
+        {
+            var ret = _this.WriteEBMLElementIdRaw(id);
+            ret += _this.WriteEBMLElementSize(size, sizeMinOctets);
+            return ret;
+        }
         public static int WriteEBMLElementIdRaw(this Stream _this, ulong id, int minOctets = 0)
         {
             var bytes = EBMLConverter.ToUIntBytes(id, minOctets);
@@ -184,6 +197,11 @@ namespace SpawnDev.EBML.Extensions
             var ret = data.ReadEBMLElementSize(out var isUnknownSize);
             if (isUnknownSize) return null;
             return ret;
+        }
+        public static string ReadEBMLElementIdRawHex(this Stream data)
+        {
+            var id = data.ReadEBMLElementIdRaw();
+            return EBMLConverter.ElementIdToHexId(id);
         }
         /// <summary>
         /// Reads a vint, but does not discard the size bit

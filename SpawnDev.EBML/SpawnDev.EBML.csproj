@@ -4,7 +4,7 @@
 		<TargetFrameworks>net9.0;net8.0;net7.0;net6.0</TargetFrameworks>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
-		<Version>3.0.0-preview.1</Version>
+		<Version>3.0.0-preview.2</Version>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<EmbedAllSources>true</EmbedAllSources>
@@ -40,7 +40,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <PackageReference Include="SpawnDev.PatchStreams" Version="1.0.4" />
+	  <PackageReference Include="SpawnDev.PatchStreams" Version="1.0.5" />
 	</ItemGroup>
 
 </Project>

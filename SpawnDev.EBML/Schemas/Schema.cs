@@ -1,6 +1,6 @@
 ﻿using System.Xml.Linq;
 
-namespace SpawnDev.EBML
+namespace SpawnDev.EBML.Schemas
 {
     /// <summary>
     /// An EBML Schema is a well-formed XML Document [@!XML] that defines the properties, arrangement, and usage of EBML Elements that compose a specific EBML Document Type. The relationship of an EBML Schema to an EBML Document is analogous to the relationship of an XML Schema [@!XML-SCHEMA] to an XML Document [@!XML]. An EBML Schema MUST be clearly associated with one or more EBML Document Types. An EBML Document Type is identified by a string stored within the EBML Header in the DocType Element -- for example, Matroska or WebM (see (#doctype-element)). The DocType value for an EBML Document Type MUST be unique, persistent, and described in the IANA registry (see (#ebml-doctypes-registry)).
@@ -80,7 +80,7 @@ namespace SpawnDev.EBML
             }
             var list = tmp.ToList();
             list.Sort((pair1, pair2) => pair1.Value.Name.CompareTo(pair2.Value.Name));
-            foreach(var item in list)
+            foreach (var item in list)
             {
                 ret.Elements.Add(item.Key, item.Value);
             }

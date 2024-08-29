@@ -1,27 +1,21 @@
 ﻿using SpawnDev.EBML.Extensions;
-using SpawnDev.EBML.Segments;
 
 namespace SpawnDev.EBML.Elements
 {
-    public class UintElement : BaseElement<ulong>
+    public class UintElement : Element
     {
-        public const string TypeName = "uinteger";
-
-        public override string DataString
+        public ulong Data
         {
-            get => Data.ToString();
+            get
+            {
+                Stream.LatestStable.Position = DataOffset;
+                return Stream.LatestStable.ReadEBMLUInt((int)MaxDataSize);
+            }
             set
             {
-                if (ulong.TryParse(value, out var v))
-                {
-                    Data = v;
-                }
+                ReplaceData(EBMLConverter.ToUIntBytes(value));
             }
         }
-        public UintElement(SchemaElement schemaElement, SegmentSource source, ElementHeader? header = null) : base(schemaElement, source, header) { }
-        public UintElement(SchemaElement schemaElement, ulong value) : base(schemaElement, value) { }
-        public UintElement(SchemaElement schemaElement) : base(schemaElement, default) { }
-        protected override void DataFromSegmentSource(ref ulong data) => data = EBMLConverter.ToUInt(SegmentSource.ReadBytes(0, SegmentSource.Length, true));
-        protected override void DataToSegmentSource(ref SegmentSource source) => source = new ByteSegment(EBMLConverter.ToUIntBytes(Data));
+        public UintElement(Document document, ElementStreamInfo element) : base(document, element) { }
     }
 }

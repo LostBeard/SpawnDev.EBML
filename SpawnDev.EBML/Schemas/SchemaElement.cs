@@ -1,7 +1,7 @@
 ﻿using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
-namespace SpawnDev.EBML
+namespace SpawnDev.EBML.Schemas
 {
     /// <summary>
     /// Defines an EBML schema element<br/>

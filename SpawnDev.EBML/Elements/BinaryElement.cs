@@ -1,17 +1,29 @@
-﻿using SpawnDev.EBML.Extensions;
-using SpawnDev.EBML.Segments;
+﻿using SpawnDev.PatchStreams;
 
 namespace SpawnDev.EBML.Elements
 {
-    public class BinaryElement : BaseElement<byte[]>
+    /// <summary>
+    /// Basic read all, write all binary element<br/>
+    /// </summary>
+    public class BinaryElement : Element
     {
-        public const string TypeName = "binary";
-        protected override bool EqualCheck(byte[] obj1, byte[] obj2) => obj1 == obj2 || obj1.SequenceEqual(obj2);
-        public override string DataString => Data.Length <= 8 ? "0x" + Convert.ToHexString(Data) : "0x" + Convert.ToHexString(Data.Take(8).ToArray()) + "...";
-        public BinaryElement(SchemaElement schemaElement, SegmentSource source, ElementHeader? header = null) : base(schemaElement, source, header) { }
-        public BinaryElement(SchemaElement schemaElement, byte[] value) : base(schemaElement, value) { }
-        public BinaryElement(SchemaElement schemaElement) : base(schemaElement, Array.Empty<byte>()) { }
-        protected override void DataFromSegmentSource(ref byte[] data) => data = SegmentSource.ReadBytes(0, SegmentSource.Length, true);
-        protected override void DataToSegmentSource(ref SegmentSource source) => source = new ByteSegment(Data);
+        /// <summary>
+        /// Returns the element's data as  PatchStream stream.<br/>
+        /// Editing the returned stream will not modify the element
+        /// </summary>
+        public PatchStream Data
+        {
+            get => ElementStreamDataSlice();
+            set
+            {
+                // Out of sync element values cannot be set
+                ReplaceData(value);
+            }
+        }
+        /// <summary>
+        /// New instance
+        /// </summary>
+        /// <param name="element"></param>
+        public BinaryElement(Document document, ElementStreamInfo element) : base(document, element) { }
     }
 }

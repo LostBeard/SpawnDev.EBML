@@ -1,9 +1,9 @@
-﻿namespace SpawnDev.EBML
+﻿namespace SpawnDev.EBML.Engines
 {
     /// <summary>
     /// Information about a document engine
     /// </summary>
-    public class DocumentEngineInfo
+    public class EngineInfo
     {
         /// <summary>
         /// Engine Type
@@ -18,7 +18,7 @@
         /// </summary>
         /// <param name="type"></param>
         /// <param name="factory"></param>
-        public DocumentEngineInfo(Type type, Func<Document, DocumentEngine>? factory = null)
+        public EngineInfo(Type type, Func<Document, DocumentEngine>? factory = null)
         {
             EngineType = type;
             Factory = factory;
