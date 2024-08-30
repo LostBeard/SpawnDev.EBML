@@ -353,7 +353,7 @@ namespace SpawnDev.EBML
         public override string? DocType
         {
             get => ReadString("/EBML,0/DocType,0");
-            protected set => WriteString("/EBML/DocType", value ?? "");
+            set => WriteString("/EBML/DocType", value ?? "");
         }
         string _DocType = "";
         bool SkipUnneededData = true;

@@ -293,7 +293,7 @@ namespace SpawnDev.EBML.Elements
         /// <summary>
         /// Returns the DocType
         /// </summary>
-        public virtual string? DocType { get => SchemaElement?.DocType ?? Document.DocType; protected set { } }
+        public virtual string? DocType { get => SchemaElement?.DocType ?? Document.DocType; set { } }
         /// <summary>
         /// Returns the entire element, header and data, as a PatchStream
         /// </summary>
