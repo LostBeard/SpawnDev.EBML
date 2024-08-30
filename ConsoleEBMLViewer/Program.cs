@@ -11,7 +11,9 @@ var file2 = @"k:\Video\matroska_audio_test.mka";
 using var fileStreamIn = File.Open(bigFile, new FileStreamOptions { Options = FileOptions.Asynchronous, Mode = FileMode.Open, Access = FileAccess.Read, Share = FileShare.Read });
 var existingDoc = new EBMLDocument(fileStreamIn);
 
-var info = existingDoc.Find("/Segment/Info/").ToList();
+var info = existingDoc.Find("/Segment/").ToList();
+var info1 = existingDoc.Find("/Segment/").ToList();
+var info2 = existingDoc.Find("/Segment/").ToList();
 
 var els1 = await existingDoc.FindAsync("/Segment/", CancellationToken.None).ToListAsync();
 

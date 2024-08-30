@@ -21,5 +21,6 @@
         public long DataOffset { get; set; }
         public bool UnknownSize { get; set; }
         public int Depth { get; set; }
+        public MasterCacheItem MasterCacheItem { get; set; }
     }
 }

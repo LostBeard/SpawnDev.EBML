@@ -362,7 +362,14 @@ namespace SpawnDev.EBML
         /// </summary>
         public override string? DocType
         {
-            get => ReadString("/EBML,0/DocType,0");
+            get
+            {
+                if (Info.PatchId != Stream.LatestStable.PatchId)
+                {
+                    ReadString("/EBML,0/DocType,0");
+                }
+                return _DocType;
+            }
             set => WriteString("/EBML,0/DocType,0", value ?? "");
         }
         /// <summary>
@@ -372,17 +379,8 @@ namespace SpawnDev.EBML
         bool SkipUnneededData = true;
         public override IEnumerable<ElementStreamInfo> FindInfo(string path)
         {
-            var sw = Stopwatch.StartNew();
-            var changed = false;
             var stream = Stream.LatestStable;
             var patchId = stream.PatchId;
-            if (Info.PatchId != patchId)
-            {
-                changed = true;
-                // patch changed
-                Info.PatchId = patchId;
-                if (Verbose) Console.WriteLine($"*********** Changed to patch: {patchId}");
-            }
             // path must be a full path element 
             if (!path.StartsWith("/")) path = $"/{path}";
             if (CachedItems.TryGetValue(path, out var cacheMatch) && cacheMatch.PatchId == patchId)
@@ -391,34 +389,53 @@ namespace SpawnDev.EBML
                 yield return cacheMatch;
                 yield break;
             }
-            if (Verbose) Console.WriteLine($"? {path}");
+            var sw = Stopwatch.StartNew();
+            var changed = false;
             var resultCount = 0;
-            var parser = Parser;
-            long documentOffset = DocumentOffset;
-            var startPos = documentOffset;
-            var startInstancePath = "/";
-            EBMLConverter.PathToParentInstancePathNameIndex(path, out var filterParentInstancePath, out var iname, out var index, true);
-            if (string.IsNullOrEmpty(filterParentInstancePath)) filterParentInstancePath = "/";
-            if (CachedItems.TryGetValue(filterParentInstancePath, out var parentInfo))
-            {
-                // save processing not reiterating parents to get to parent path
-                // TODO
-                var nmt = true;
-            }
-            var target = $"{filterParentInstancePath}/{iname},{index}";
-            var singleTarget = index < 0;
-            var partType = iname.StartsWith("@") ? iname.Substring(1) : "";
-            var partId = !iname.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? 0 : EBMLConverter.ElementIdFromHexId(iname);
-            // verify document is EBML
-            var pos = stream.Position;
-            stream.Position = documentOffset;
-            if (!parser.IsEBML(stream))
-            {
-                stream.Position = pos;
-                yield break;
-            }
             try
             {
+                if (Info.PatchId != patchId)
+                {
+                    changed = true;
+                    MasterCache.Clear();
+                    // patch changed
+                    Info.PatchId = patchId;
+                    if (Verbose) Console.WriteLine($"*********** Changed to patch: {patchId}");
+                }
+                if (Verbose) Console.WriteLine($"? {path}");
+                var parser = Parser;
+                long documentOffset = DocumentOffset;
+                var startPos = documentOffset;
+                var startInstancePath = "/";
+                EBMLConverter.PathToParentInstancePathNameIndex(path, out var filterParentInstancePath, out var iname, out var index, true);
+                if (string.IsNullOrEmpty(filterParentInstancePath)) filterParentInstancePath = "/";
+                if (CachedItems.TryGetValue(filterParentInstancePath, out var parentInfo))
+                {
+                    // save processing not reiterating parents to get to parent path
+                    // TODO
+                    var nmt = true;
+                }
+                if (iname == "" && index == -1 && MasterCache.TryGetValue(filterParentInstancePath, out var cachedResults))
+                {
+                    foreach (var i in cachedResults.Children.Values)
+                    {
+                        yield return i;
+                    }
+                    resultCount = cachedResults.Children.Values.Count();
+                    yield break;
+                }
+                var target = $"{filterParentInstancePath}/{iname},{index}";
+                var singleTarget = index < 0;
+                var partType = iname.StartsWith("@") ? iname.Substring(1) : "";
+                var partId = !iname.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? 0 : EBMLConverter.ElementIdFromHexId(iname);
+                // verify document is EBML
+                var pos = stream.Position;
+                stream.Position = documentOffset;
+                if (!parser.IsEBML(stream))
+                {
+                    stream.Position = pos;
+                    yield break;
+                }
                 stream.Position = startPos;
                 var currentIndex = -1;
                 var endPos = stream.Length;
@@ -432,6 +449,15 @@ namespace SpawnDev.EBML
                     }
                 };
                 var parent = stack.Last();
+                if (!MasterCache.TryGetValue(parent.InstancePath, out var masterCacheItem))
+                {
+                    masterCacheItem = new MasterCacheItem
+                    {
+                        InstancePath = parent.InstancePath,
+                    };
+                    MasterCache.Add(parent.InstancePath, masterCacheItem);
+                }
+                parent.MasterCacheItem = masterCacheItem;
                 IteratedElementInfo? targetParent = filterParentInstancePath == parent.InstancePath ? parent : null;
                 while (stream.CanRead && stream.Position < endPos)
                 {
@@ -455,6 +481,7 @@ namespace SpawnDev.EBML
                     var schemaElement = parser.GetElement(id, _DocType);
                     while (parent.UnknownSize && schemaElement != null && !parser.CheckParent(parent!.Path, schemaElement))
                     {
+                        parent.MasterCacheItem.Complete = true;
                         if (parent == targetParent)
                         {
                             yield break;
@@ -488,6 +515,10 @@ namespace SpawnDev.EBML
                     {
                         elementStreamInfo = new ElementStreamInfo();
                         CachedItems.Add(elementInstancePath, elementStreamInfo);
+                    }
+                    if (!parent.MasterCacheItem.Children.TryGetValue(elementInstancePath, out var child) || child != elementStreamInfo)
+                    {
+                        parent.MasterCacheItem.Children[elementInstancePath] = elementStreamInfo;
                     }
                     elementStreamInfo.Offset = elementOffset;
                     elementStreamInfo.Id = id;
@@ -581,6 +612,15 @@ namespace SpawnDev.EBML
                             // has to be iterated
                             stack.Add(iteratedInfo);
                             parent = iteratedInfo;
+                            if (!MasterCache.TryGetValue(parent.InstancePath, out masterCacheItem))
+                            {
+                                masterCacheItem = new MasterCacheItem
+                                {
+                                    InstancePath = parent.InstancePath,
+                                };
+                                MasterCache.Add(parent.InstancePath, masterCacheItem);
+                            }
+                            parent.MasterCacheItem = masterCacheItem;
                             if (Verbose) Console.WriteLine($">> {parent.InstancePath}");
                         }
                     }
@@ -601,6 +641,8 @@ namespace SpawnDev.EBML
                         allEnded.Reverse();
                         foreach (var i in allEnded)
                         {
+                            // this instance has been fully iterated and can now be used instead of iterating file if possible
+                            i.MasterCacheItem.Complete = true;
                             if (i.UnknownSize)
                             {
                                 // can now yield queued results
@@ -626,6 +668,7 @@ namespace SpawnDev.EBML
                 }
             }
         }
+        Dictionary<string, MasterCacheItem> MasterCache = new Dictionary<string, MasterCacheItem>();
         public override async IAsyncEnumerable<ElementStreamInfo> FindInfoAsync(string path, CancellationToken cancellationToken)
         {
             var sw = Stopwatch.StartNew();
@@ -882,5 +925,15 @@ namespace SpawnDev.EBML
                 }
             }
         }
+    }
+    internal class MasterCacheItem
+    {
+        public string InstancePath { get; set; }
+        /// <summary>
+        /// When marked true the entire master element has been iterated and Children contains all of it's children<br/>
+        /// This allows the already iterated result to be returned or searched instead of reiterating over the file
+        /// </summary>
+        public bool Complete { get; set; }
+        public Dictionary<string, ElementStreamInfo> Children = new Dictionary<string, ElementStreamInfo>();
     }
 }
