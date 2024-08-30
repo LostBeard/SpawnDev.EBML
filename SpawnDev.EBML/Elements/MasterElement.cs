@@ -379,7 +379,7 @@ namespace SpawnDev.EBML.Elements
             var schemaElement = Parser.GetElement(name, SchemaElement?.DocType ?? EBMLParser.EBML);
             if (schemaElement == null)
             {
-                var docType = DocType;
+                var docType = Document.DocType;
                 if (!string.IsNullOrEmpty(docType))
                 {
                     schemaElement = Parser.GetElement(name, docType);

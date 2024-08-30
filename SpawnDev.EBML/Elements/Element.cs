@@ -291,6 +291,10 @@ namespace SpawnDev.EBML.Elements
             Document.DataChanged(changedElement, newDataSize);
         }
         /// <summary>
+        /// Returns the DocType
+        /// </summary>
+        public virtual string DocType { get => SchemaElement?.DocType ?? Document.DocType; protected set { } }
+        /// <summary>
         /// Returns the entire element, header and data, as a PatchStream
         /// </summary>
         /// <returns></returns>
