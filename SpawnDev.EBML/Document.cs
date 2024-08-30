@@ -63,11 +63,9 @@ namespace SpawnDev.EBML
             _Stream.OnRestorePointsChanged += _Stream_OnRestorePointsChanged;
             LoadEngines();
             Stream.RestorePoint = true;
-            Info.PatchId = Stream.PatchId;
             if (!string.IsNullOrEmpty(docType))
             {
                 CreateDocument(docType);
-                _DocType = ReadString("/EBML/DocType");
             }
             Console.WriteLine($"DocType: {DocType}");
         }
@@ -92,27 +90,36 @@ namespace SpawnDev.EBML
             _Stream.OnRestorePointsChanged += _Stream_OnRestorePointsChanged;
             LoadEngines();
             Stream.RestorePoint = true;
-            Info.PatchId = Stream.PatchId;
-            _DocType = ReadString("/EBML/DocType");
+            FindInfo("/EBML/DocTpe").FirstOrDefault();
             Console.WriteLine($"DocType: {DocType}");
         }
         private void _Stream_OnChanged(PatchStream sender, IEnumerable<Patch> overwrittenPatches, IEnumerable<ByteRange> affectedRegions)
         {
-            if (VerboseStream) Console.WriteLine("Stream changed");
-            if (sender.RestorePoint)
+            if (VerboseStream) Console.WriteLine($"Stream changed: {sender.PatchId} {CanUpdate}");
+            if (CanUpdate)
             {
-                Info.PatchId = Stream.PatchId;
-                _DocType = ReadString("/EBML/DocType");
+                FindInfo("/EBML/DocTpe").FirstOrDefault();
+                RunDocumentEngines();
+                if (CanUpdate)
+                {
+                    Stream.RestorePoint = true;
+                    FindInfo("/EBML/DocTpe").FirstOrDefault();
+                }
             }
         }
         private void _Stream_OnRestorePointsChanged(PatchStream sender)
         {
+            if (VerboseStream) Console.WriteLine($"Restore point set: {sender.PatchId}");
             if (!sender.RestorePoint) return;
-            if (VerboseStream) Console.WriteLine("Restore point set");
             unhandledChanges++;
-            if (Stream.RestorePoint && !DocumentEnginesRunning)
+            if (CanUpdate)
             {
+                FindInfo("/EBML/DocTpe").FirstOrDefault();
                 RunDocumentEngines();
+                if (CanUpdate)
+                {
+                    FindInfo("/EBML/DocTpe").FirstOrDefault();
+                }
             }
         }
         void UpdateHeader(Element element, ref long sizeDiff)
@@ -151,7 +158,7 @@ namespace SpawnDev.EBML
                     newDataSize = -changedElement.HeaderSize;
                     // delete the entire element
                     Stream.Position = changedElement.Offset;
-                    Stream.Delete(changedElement.MaxTotalSize); 
+                    Stream.Delete(changedElement.MaxTotalSize);
                     // notify parent so it can adjust the size value in its header
                     // newDataSize = -1 to signify deletion
                 }
@@ -174,20 +181,14 @@ namespace SpawnDev.EBML
                 }
             }
             // the stream can be marked as stable again now that headers have been verified
-            //CachedItems.Clear();
-            Stream.RestorePoint = true;
-            Info.PatchId = Stream.PatchId;
-            _DocType = ReadString("/EBML/DocType");
-            if (Verbose) Console.WriteLine($"----------------------------------------------------------: {Stream.RestorePoint} {_DocType}");
+            if (Verbose) Console.WriteLine($"----------------------------------------------------------: {Stream.RestorePoint}");
             ChangeEventBackLog.Add(changedElement);
             unhandledChanges++;
-            if (Stream.RestorePoint && !DocumentEnginesRunning)
-            {
-                RunDocumentEngines();
-            }
             Stream.RestorePoint = true;
-            Info.PatchId = Stream.PatchId;
-            _DocType = ReadString("/EBML/DocType");
+            FindInfo("/EBML/DocTpe").FirstOrDefault();
+            RunDocumentEngines();
+            Stream.RestorePoint = true;
+            if (CanUpdate) FindInfo("/EBML/DocTpe").FirstOrDefault();
         }
         protected Dictionary<string, ElementStreamInfo> CachedItems = new Dictionary<string, ElementStreamInfo>();
         /// <summary>
@@ -331,8 +332,8 @@ namespace SpawnDev.EBML
         /// </summary>
         public void CreateDocument(string docType)
         {
-            var ebmlHeader = AddMaster("EBML", 0)!;
-            var docTypeElement = ebmlHeader.WriteString("DocType", docType);
+            AddMaster("EBML", 0);
+            DocType = docType;
         }
         /// <summary>
         /// Release resources
@@ -346,14 +347,37 @@ namespace SpawnDev.EBML
                 if (engine is IDisposable disposable) disposable.Dispose();
             }
         }
-        public override string DocType => _DocType ?? EBMLParser.EBML;
-        protected string? _DocType = null;
+        public string DocType
+        {
+            get
+            {
+                //if (Info.PatchId != Stream.LatestStable.PatchId)
+                //{
+                //    //Info.PatchId = Stream.LatestStable.PatchId;
+                //    _DocType = ReadString("/EBML,0/DocType,0") ?? "";
+                //}
+                return ReadString("/EBML,0/DocType,0");
+            }
+            set
+            {
+                WriteString("/EBML/DocType", value);
+                //_DocType = value;
+            }
+        }
+        string _DocType = "";
         bool SkipUnneededData = true;
         public override IEnumerable<ElementStreamInfo> FindInfo(string path) => FindInfo(path, false);
         protected internal IEnumerable<ElementStreamInfo> FindInfo(string path, bool useLiveStream)
         {
+            if (Verbose) Console.WriteLine($"? {path}");
             var stream = Stream.LatestStable;
             var patchId = stream.PatchId;
+            if (Info.PatchId != patchId)
+            {
+                // patch changed
+                Info.PatchId = patchId;
+                if (Verbose) Console.WriteLine($"Changed to patch: {patchId}");
+            }
             if (!path.StartsWith("/")) path = $"/{path}";
             if (CachedItems.TryGetValue(path, out var cacheMatch) && cacheMatch.PatchId == patchId)
             {
@@ -362,7 +386,6 @@ namespace SpawnDev.EBML
                 yield break;
             }
             var resultCount = 0;
-            if (Verbose) if (Verbose) Console.WriteLine($"? {path}");
             var parser = Parser;
             long documentOffset = DocumentOffset;
             var startPos = documentOffset;
@@ -528,7 +551,7 @@ namespace SpawnDev.EBML
                     // - The end of the EBML Document, either when reaching the end of the file or because a new EBML Header started.
                     if (schemaElement?.Type == "master")
                     {
-                        if (_DocType == null && elementName == "EBML")
+                        if (elementName == "EBML" && (!CachedItems.TryGetValue("/EBML,0/DocType,0", out var docTypeInfo) || docTypeInfo.PatchId != patchId))
                         {
                             // iterate EBML to try and get DocType
                             skipIfMaster = false;
@@ -576,19 +599,6 @@ namespace SpawnDev.EBML
                         }
                         parent = stack.Last();
                     }
-                    //while (parent.MaxSize + parent.DataOffset <= stream.Position)
-                    //{
-                    //    if (parent == targetParent)
-                    //    {
-                    //        yield break;
-                    //    }
-                    //    if (stack.Count == 1)
-                    //    {
-                    //        yield break;
-                    //    }
-                    //    stack.Remove(parent);
-                    //    parent = stack.Last();
-                    //}
                 }
             }
             finally

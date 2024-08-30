@@ -40,7 +40,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <PackageReference Include="SpawnDev.PatchStreams" Version="1.0.5" />
+	  <ProjectReference Include="..\..\..\SpawnDev.PatchStreams\SpawnDev.PatchStreams\SpawnDev.PatchStreams\SpawnDev.PatchStreams.csproj" />
 	</ItemGroup>
+
 
 </Project>

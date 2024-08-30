@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlazorEBMLViewer", "BlazorE
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleEBMLViewer", "ConsoleEBMLViewer\ConsoleEBMLViewer.csproj", "{80FBC20A-A3DE-495A-B46A-BCF156BFECFF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpawnDev.PatchStreams", "..\..\SpawnDev.PatchStreams\SpawnDev.PatchStreams\SpawnDev.PatchStreams\SpawnDev.PatchStreams.csproj", "{DE19AFA3-3D43-41DC-93F9-D7BC27AC083B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{80FBC20A-A3DE-495A-B46A-BCF156BFECFF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{80FBC20A-A3DE-495A-B46A-BCF156BFECFF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{80FBC20A-A3DE-495A-B46A-BCF156BFECFF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DE19AFA3-3D43-41DC-93F9-D7BC27AC083B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DE19AFA3-3D43-41DC-93F9-D7BC27AC083B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DE19AFA3-3D43-41DC-93F9-D7BC27AC083B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DE19AFA3-3D43-41DC-93F9-D7BC27AC083B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
