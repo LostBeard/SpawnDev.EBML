@@ -222,6 +222,8 @@ namespace SpawnDev.EBML
                 ret.Add(engineInfo, engine);
             }
         }
+        public bool CanUndo => Stream?.CanRestorePointUndo ?? false;
+        public bool CanRedo => Stream?.CanRestorePointRedo ?? false;
         public bool Undo()
         {
             return Stream.RestorePointUndo();

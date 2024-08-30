@@ -103,6 +103,16 @@ namespace BlazorEBMLViewer.Pages
             DocumentBusy = false;
             StateHasChanged();
         }
+        bool CanUndo => Document?.CanUndo ?? false;
+        bool CanRedo => Document?.CanRedo ?? false;
+        async Task Undo()
+        {
+            Document?.Undo();
+        }
+        async Task Redo()
+        {
+            Document?.Redo();
+        }
         async Task SetPath(ElementBase element)
         {
             if (element == null) return;

@@ -23,6 +23,8 @@
                         </RadzenMenuItem>
                         <RadzenMenuItem Click="GoUp" Icon="arrow_upward" title="Up" Disabled="@(!CanGoUp)"></RadzenMenuItem>
                         <RadzenMenuItem Click="AddElement" Icon="add" title="Add" Disabled="@(Document == null)"></RadzenMenuItem>
+                        <RadzenMenuItem Click="Undo" Icon="undo" title="Undo" Disabled="@(!CanUndo)"></RadzenMenuItem>
+                        <RadzenMenuItem Click="Redo" Icon="redo" title="Redo" Disabled="@(!CanRedo)"></RadzenMenuItem>
 
                     </RadzenMenu>
                 </div>
