@@ -271,7 +271,7 @@ namespace SpawnDev.EBML.Elements
         /// <summary>
         /// Returns the element this element is contained in
         /// </summary>
-        public MasterElement? Parent => DocumentRoot || Root ? null : Document.FindMaster(ParentInstancePath!);
+        public MasterElement? Parent => DocumentRoot ? null : Root ? Document : Document.FindMaster(ParentInstancePath!);
         /// <summary>
         /// Returns this elements parent instance path
         /// </summary>

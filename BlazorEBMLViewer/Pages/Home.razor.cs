@@ -19,7 +19,7 @@ namespace BlazorEBMLViewer.Pages
         public string? ActiveContainerTypeName => ActiveContainer?.GetType().Name;
         public MasterElement? ActiveContainer { get; set; }
         public string Path => ActiveContainer?.InstancePath ?? "";
-        bool CanGoUp => ActiveContainer?.Parent != null;
+        bool CanGoUp => !(ActiveContainer?.DocumentRoot ?? true);
         [Inject]
         BlazorJSRuntime JS { get; set; }
         [Inject]

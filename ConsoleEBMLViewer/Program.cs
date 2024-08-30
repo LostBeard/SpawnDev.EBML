@@ -13,11 +13,9 @@ var existingDoc = new EBMLDocument(fileStreamIn);
 
 //var info = existingDoc.Find("/Segment/").ToList();
 //var info1 = existingDoc.Find("/Segment/").ToList();
-//var info2 = existingDoc.Find("/Segment/").ToList();
 
-var els1 = await existingDoc.FindAsync("/Segment/", CancellationToken.None).ToListAsync();
-var els2 = await existingDoc.FindAsync("/Segment/", CancellationToken.None).ToListAsync();
-var els3 = await existingDoc.FindAsync("/Segment/", CancellationToken.None).ToListAsync();
+//var els1 = await existingDoc.FindAsync("/Segment/", CancellationToken.None).ToListAsync();
+//var els2 = await existingDoc.FindAsync("/Segment/", CancellationToken.None).ToListAsync();
 
 var newDoc = new EBMLDocument("webm");
 Console.WriteLine($"DocType: 'webm' == {newDoc.DocType}");
