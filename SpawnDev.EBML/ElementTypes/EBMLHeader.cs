@@ -9,6 +9,6 @@ namespace SpawnDev.EBML.ElementTypes
         /// New instance
         /// </summary>
         /// <param name="element"></param>
-        public EBMLHeader(Document document, ElementStreamInfo element) : base(document, element) { }
+        public EBMLHeader(EBMLDocument document, ElementStreamInfo element) : base(document, element) { }
     }
 }

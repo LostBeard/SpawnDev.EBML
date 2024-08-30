@@ -16,8 +16,8 @@ namespace SpawnDev.EBML.Elements
         public long DocumentOffset { get; protected internal set; }
         public long Offset { get; protected internal set; }
         public ulong? Size { get; protected internal set; }
-        public long MaxDataSize { get; protected internal set; }
-        public long MaxTotalSize { get; protected internal set; }
+        public long DataSize { get; protected internal set; }
+        public long TotalSize { get; protected internal set; }
         public long DataOffset { get; protected internal set; }
         public long HeaderSize { get; protected internal set; }
         public string PatchId { get; protected internal set; }

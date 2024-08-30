@@ -10,6 +10,6 @@ namespace SpawnDev.EBML.Matroska
         /// New instance
         /// </summary>
         /// <param name="element"></param>
-        public SimpleBlock(Document document, ElementStreamInfo element) : base(document, element) { }
+        public SimpleBlock(EBMLDocument document, ElementStreamInfo element) : base(document, element) { }
     }
 }

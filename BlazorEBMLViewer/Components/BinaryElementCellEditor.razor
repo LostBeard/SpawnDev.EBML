@@ -32,7 +32,7 @@
             {
                 filename = $"{Element.Name}.data";
             }
-            using var tmp = new Blob(new byte[][] { Element.Data });
+            using var tmp = new Blob(new byte[][] { Element.Data.ToArray(true) });
             await tmp.StartDownload(filename);
         }
         catch
@@ -49,10 +49,10 @@
         await Task.Delay(50);
         using var arrayBuffer = await file.ArrayBuffer();
         var bytes = arrayBuffer.ReadBytes();
-        Element.Data = bytes;
+        Element.Data = new SpawnDev.PatchStreams.PatchStream(bytes);
         var filename = file.Name;
         // offer to set the filename field if it exists
-        var fileNameElement = Element.Parent!.GetElement<UTF8Element>("FileName");
+        var fileNameElement = Element.Parent!.First<StringElement>("FileName");
         var isMkvAttachedFile = Element.Path == @"/Segment/Attachments/AttachedFile/FileData";
         if (fileNameElement != null || isMkvAttachedFile)
         {
@@ -65,7 +65,7 @@
                 }
                 else
                 {
-                    Element.Parent!.AddUTF8("FileName", filename);
+                    Element.Parent!.AddString("FileName", filename);
                 }
             }
         }
@@ -75,7 +75,7 @@
     {
         var confirm = await DialogService.Confirm("Clear data?");
         if (confirm != true) return;
-        Element.Data = new byte[0];
+        Element.Data = new SpawnDev.PatchStreams.PatchStream();
         await OnChanged.InvokeAsync();
     }
 }

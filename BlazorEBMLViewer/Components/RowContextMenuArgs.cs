@@ -6,8 +6,8 @@ namespace BlazorEBMLViewer.Components
     public class RowContextMenuArgs
     {
         public MouseEventArgs MouseEventArgs { get; set; }
-        public BaseElement Element { get; set; }
-        public RowContextMenuArgs(MouseEventArgs mouseEventArgs, BaseElement element)
+        public ElementBase Element { get; set; }
+        public RowContextMenuArgs(MouseEventArgs mouseEventArgs, ElementBase element)
         {
             MouseEventArgs = mouseEventArgs;
             Element = element;

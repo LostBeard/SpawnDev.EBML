@@ -12,14 +12,14 @@ namespace SpawnDev.EBML.Engines
         /// This constructor can take an existing EBMLDocument and parse it<br/>
         /// This is used by the generic Parser
         /// </summary>
-        public MatroskaEngine(Document document) : base(document)
+        public MatroskaEngine(EBMLDocument document) : base(document)
         {
 
         }
         public List<string> DefaultSeekHeadTargets = new List<string> { "Info", "Tracks", "Chapters", "Cues", "Attachments" };
         public bool AutoPopulateSeekDefaultTargets { get; set; } = true;
         string[] DocTypes = new[] { "matroska", "webm" };
-        public override void DocumentCheck(List<Element> changedElements)
+        public override void DocumentCheck(List<ElementBase> changedElements)
         {
             if (!DocTypes.Contains(Document.DocType)) return;
             //var issues = new List<DocumentIssue>();

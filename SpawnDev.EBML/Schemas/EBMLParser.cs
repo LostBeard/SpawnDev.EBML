@@ -107,7 +107,7 @@ namespace SpawnDev.EBML.Schemas
         /// </summary>
         /// <param name="stream">The stream to read EBMLDocuments from</param>
         /// <returns></returns>
-        public IEnumerable<Document> ParseDocuments(Stream stream)
+        public IEnumerable<EBMLDocument> ParseDocuments(Stream stream)
         {
             var startPos = stream.Position;
             while (startPos < stream.Length)
@@ -116,8 +116,8 @@ namespace SpawnDev.EBML.Schemas
                 var isEBML = IsEBML(stream);
                 stream.Position = startPos;
                 if (!isEBML) yield break;
-                var doc = new Document(stream, this);
-                var docSize = doc.MaxTotalSize;
+                var doc = new EBMLDocument(stream, this);
+                var docSize = doc.TotalSize;
                 if (docSize == 0)
                 {
                     yield break;
@@ -132,13 +132,13 @@ namespace SpawnDev.EBML.Schemas
         /// <param name="stream"></param>
         /// <param name="filename"></param>
         /// <returns></returns>
-        public Document? ParseDocument(Stream stream, string? filename = null)
+        public EBMLDocument? ParseDocument(Stream stream, string? filename = null)
         {
             var startPos = stream.Position;
             var isEBML = IsEBML(stream);
             stream.Position = startPos;
             if (!isEBML) return null;
-            return new Document(stream, this, filename);
+            return new EBMLDocument(stream, this, filename);
         }
         /// <summary>
         /// Creates a new EBML document with the specified DocType
@@ -146,14 +146,14 @@ namespace SpawnDev.EBML.Schemas
         /// <param name="docType"></param>
         /// <param name="filename"></param>
         /// <returns></returns>
-        public Document CreateDocument(string docType, string? filename = null) => new Document(docType, this);
+        public EBMLDocument CreateDocument(string docType, string? filename = null) => new EBMLDocument(docType, this);
         /// <summary>
         /// Returns the element name the Element type is associated with
         /// </summary>
         /// <typeparam name="TElement"></typeparam>
         /// <param name="docType"></param>
         /// <returns></returns>
-        public string? GetElementNameFromType<TElement>(string docType) where TElement : Element
+        public string? GetElementNameFromType<TElement>(string docType) where TElement : ElementBase
         {
             var typeT = typeof(TElement);
             var typeName = typeT.Name;
@@ -371,7 +371,7 @@ namespace SpawnDev.EBML.Schemas
         /// <summary>
         /// Register a document engine that can handle document events and provide additional tools for a document
         /// </summary>
-        public void RegisterDocumentEngine<TEBMLDocumentEngine>(Func<Document, DocumentEngine> factory) where TEBMLDocumentEngine : DocumentEngine
+        public void RegisterDocumentEngine<TEBMLDocumentEngine>(Func<EBMLDocument, DocumentEngine> factory) where TEBMLDocumentEngine : DocumentEngine
         {
             var ebmlDocumentParserInfo = new EngineInfo(typeof(TEBMLDocumentEngine), factory);
             _EBMLDocumentEngines.Add(ebmlDocumentParserInfo);
@@ -379,7 +379,7 @@ namespace SpawnDev.EBML.Schemas
         /// <summary>
         /// Register a document engine that can handle document events and provide additional tools for a document
         /// </summary>
-        public void RegisterDocumentEngine(Type engineType, Func<Document, DocumentEngine> factory)
+        public void RegisterDocumentEngine(Type engineType, Func<EBMLDocument, DocumentEngine> factory)
         {
             var ebmlDocumentParserInfo = new EngineInfo(engineType, factory);
             _EBMLDocumentEngines.Add(ebmlDocumentParserInfo);

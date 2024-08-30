@@ -8,9 +8,9 @@ namespace SpawnDev.EBML.Engines
     /// </summary>
     class EBMLEngine : DocumentEngine
     {
-        public EBMLEngine(Document document) : base(document) { }
+        public EBMLEngine(EBMLDocument document) : base(document) { }
 
-        public override void DocumentCheck(List<Element> changedElements)
+        public override void DocumentCheck(List<ElementBase> changedElements)
         {
             if (changedElements.Count > 0)
             {

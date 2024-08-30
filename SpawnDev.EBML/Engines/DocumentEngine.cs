@@ -12,12 +12,12 @@ namespace SpawnDev.EBML.Engines
         /// <summary>
         /// The EBML document this engine is attached to
         /// </summary>
-        public Document Document { get; private set; }
+        public EBMLDocument Document { get; private set; }
         /// <summary>
         /// Required EBMLDocumentEngine constructor
         /// </summary>
         /// <param name="document"></param>
-        public DocumentEngine(Document document)
+        public DocumentEngine(EBMLDocument document)
         {
             Document = document;
         }
@@ -25,7 +25,7 @@ namespace SpawnDev.EBML.Engines
         /// Called by the Document when the document has changed<br/>
         /// This gives the engine a chance to update the document if needed
         /// </summary>
-        public abstract void DocumentCheck(List<Element> changedElements);
+        public abstract void DocumentCheck(List<ElementBase> changedElements);
         /// <summary>
         /// Fired when a log entry has been added
         /// </summary>

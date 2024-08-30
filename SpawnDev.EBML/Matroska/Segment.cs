@@ -10,6 +10,6 @@ namespace SpawnDev.EBML.Matroska
         /// New instance
         /// </summary>
         /// <param name="element"></param>
-        public Segment(Document document, ElementStreamInfo element) : base(document, element) { }
+        public Segment(EBMLDocument document, ElementStreamInfo element) : base(document, element) { }
     }
 }

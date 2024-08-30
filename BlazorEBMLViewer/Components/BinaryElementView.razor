@@ -55,11 +55,11 @@
     }
     protected override async Task OnParametersSetAsync()
     {
-        var data = Element.Data;
+        var data = Element.Data.ToArray(true);
         var fileType = DetectContentType(data);
         if (fileType != null && fileType.StartsWith("image/"))
         {
-            using var blob = string.IsNullOrEmpty(fileType) ? new Blob(new byte[][] { Element.Data }) : new Blob(new byte[][] { Element.Data }, new BlobOptions { Type = fileType });
+            using var blob = string.IsNullOrEmpty(fileType) ? new Blob(new byte[][] { data }) : new Blob(new byte[][] { data }, new BlobOptions { Type = fileType });
             ImageDataUrl = await blob.ToDataURLAsync();
         }
         else

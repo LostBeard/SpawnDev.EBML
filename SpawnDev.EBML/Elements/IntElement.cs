@@ -3,20 +3,24 @@ using SpawnDev.PatchStreams;
 
 namespace SpawnDev.EBML.Elements
 {
-    public class IntElement : Element
+    public class IntElement : ElementBase
     {
+        /// <summary>
+        /// The element type name
+        /// </summary>
+        public const string TypeName  = "integer";
         public long Data
         {
             get
             {
                 Stream.Position = DataOffset;
-                return Stream.ReadEBMLInt((int)MaxDataSize);
+                return Stream.ReadEBMLInt((int)DataSize);
             }
             set
             {
                 ReplaceData(EBMLConverter.ToIntBytes(value));
             }
         }
-        public IntElement(Document document, ElementStreamInfo element) : base(document, element) { }
+        public IntElement(EBMLDocument document, ElementStreamInfo element) : base(document, element) { }
     }
 }

@@ -9,6 +9,6 @@ namespace SpawnDev.EBML.ElementTypes
         /// New instance
         /// </summary>
         /// <param name="element"></param>
-        public VoidElement(Document document, ElementStreamInfo element) : base(document, element) { }
+        public VoidElement(EBMLDocument document, ElementStreamInfo element) : base(document, element) { }
     }
 }

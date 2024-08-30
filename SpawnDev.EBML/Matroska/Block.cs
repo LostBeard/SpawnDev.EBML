@@ -4,12 +4,12 @@ namespace SpawnDev.EBML.Matroska
 {
     [ElementName("webm", "Block")]
     [ElementName("matroska", "Block")]
-    public class Block : Element
+    public class Block : ElementBase
     {
         /// <summary>
         /// New instance
         /// </summary>
         /// <param name="element"></param>
-        public Block(Document document, ElementStreamInfo element) : base(document, element) { }
+        public Block(EBMLDocument document, ElementStreamInfo element) : base(document, element) { }
     }
 }

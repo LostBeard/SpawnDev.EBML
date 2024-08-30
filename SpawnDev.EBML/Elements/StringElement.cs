@@ -3,8 +3,16 @@ using System.Text;
 
 namespace SpawnDev.EBML.Elements
 {
-    public class StringElement : Element
+    public class StringElement : ElementBase
     {
+        /// <summary>
+        /// The element type name
+        /// </summary>
+        public const string TypeNameString = "string";
+        /// <summary>
+        /// The element type name
+        /// </summary>
+        public const string TypeNameUTF8  = "utf-8";
         public string Data
         {
             get
@@ -18,6 +26,6 @@ namespace SpawnDev.EBML.Elements
             }
         }
         public bool IsUTF8 => SchemaElement?.Type == "utf-8";
-        public StringElement(Document document, ElementStreamInfo element) : base(document, element) { }
+        public StringElement(EBMLDocument document, ElementStreamInfo element) : base(document, element) { }
     }
 }

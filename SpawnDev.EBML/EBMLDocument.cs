@@ -4,13 +4,15 @@ using SpawnDev.EBML.Extensions;
 using SpawnDev.EBML.Schemas;
 using SpawnDev.PatchStreams;
 using System.Diagnostics;
+using System.Reflection.PortableExecutable;
+using System.Threading;
 
 namespace SpawnDev.EBML
 {
     /// <summary>
     /// An EBML document
     /// </summary>
-    public partial class Document : MasterElement, IDisposable
+    public partial class EBMLDocument : MasterElement, IDisposable
     {
         private EBMLParser _Parser { get; set; }
         private PatchStream _Stream { get; set; }
@@ -35,7 +37,15 @@ namespace SpawnDev.EBML
         /// Returns the EBML body or null if not found<br/>
         /// EBML body refers to the first element that is not the EBML element, usually right after the EBML element
         /// </summary>
-        public IEnumerable<Element> Body => Children.Skip(1);
+        public IEnumerable<ElementBase> Body => Children.Skip(1);
+        /// <summary>
+        /// 
+        /// </summary>
+        public event Action OnChanged = default!;
+        /// <summary>
+        /// Trigger the OnChanged event
+        /// </summary>
+        protected void Changed() => OnChanged?.Invoke();
         /// <summary>
         /// Log message event
         /// </summary>
@@ -44,7 +54,7 @@ namespace SpawnDev.EBML
         /// Creates a new EBML document with the specified type<br/>
         /// Only the /EBML and /EBML/DocType are created
         /// </summary>
-        public Document(string docType = "ebml", EBMLParser? parser = null, string? filename = null) : base()
+        public EBMLDocument(string docType = "ebml", EBMLParser? parser = null, string? filename = null) : base()
         {
             if (filename != null) Filename = filename;
             parser ??= new EBMLParser();
@@ -72,7 +82,7 @@ namespace SpawnDev.EBML
         /// <summary>
         /// Creates a new instance
         /// </summary>
-        public Document(Stream stream, EBMLParser? parser = null, string? filename = null) : base()
+        public EBMLDocument(Stream stream, EBMLParser? parser = null, string? filename = null) : base()
         {
             if (filename != null) Filename = filename;
             if (stream == null) throw new ArgumentNullException(nameof(stream));
@@ -122,11 +132,11 @@ namespace SpawnDev.EBML
                 }
             }
         }
-        void UpdateHeader(Element element, ref long sizeDiff)
+        void UpdateHeader(ElementBase element, ref long sizeDiff)
         {
             if (sizeDiff != 0)
             {
-                var newSize = element.MaxDataSize + sizeDiff;
+                var newSize = element.DataSize + sizeDiff;
                 if (newSize < 0)
                 {
                     throw new Exception("Invalid size");
@@ -135,7 +145,7 @@ namespace SpawnDev.EBML
                 var elementHeaderStream = EBMLStreamExtensions.CreateEBMLHeader(element.Id, (ulong)newSize);
                 // replace current header with new header
                 Stream.Position = element.Offset;
-                if (Verbose) Console.WriteLine($"-- Replacing header: {InstancePath} {element.MaxDataSize} > {newSize}");
+                if (Verbose) Console.WriteLine($"-- Replacing header: {InstancePath} {element.DataSize} > {newSize}");
                 Stream.Insert(elementHeaderStream, element.HeaderSize);
                 var headerSizeDiff = elementHeaderStream.Length - element.HeaderSize;
                 sizeDiff += headerSizeDiff;
@@ -146,7 +156,7 @@ namespace SpawnDev.EBML
         /// </summary>
         /// <param name="changedElement"></param>
         /// <param name="newDataSize"></param>
-        protected internal override void DataChanged(Element changedElement, long newDataSize)
+        protected internal override void DataChanged(ElementBase changedElement, long newDataSize)
         {
             // Fix headers starting with the changed element and going up the ancestor list
             if (changedElement != this)
@@ -158,11 +168,11 @@ namespace SpawnDev.EBML
                     newDataSize = -changedElement.HeaderSize;
                     // delete the entire element
                     Stream.Position = changedElement.Offset;
-                    Stream.Delete(changedElement.MaxTotalSize);
+                    Stream.Delete(changedElement.TotalSize);
                     // notify parent so it can adjust the size value in its header
                     // newDataSize = -1 to signify deletion
                 }
-                var sizeDiff = newDataSize - changedElement.MaxDataSize;
+                var sizeDiff = newDataSize - changedElement.DataSize;
                 if (sizeDiff != 0)
                 {
                     if (newDataSize > 0)
@@ -266,7 +276,7 @@ namespace SpawnDev.EBML
         /// </summary>
         public bool DocumentEnginesRunning { get; private set; } = false;
         int unhandledChanges = 0;
-        List<Element> ChangeEventBackLog = new List<Element>();
+        List<ElementBase> ChangeEventBackLog = new List<ElementBase>();
         public bool VerboseEngines { get; set; } = false;
         public bool VerboseStream { get; set; } = false;
         /// <summary>
@@ -296,7 +306,7 @@ namespace SpawnDev.EBML
                 {
                     unhandledChanges = 0;
                     var changeEventBackLog = ChangeEventBackLog;
-                    ChangeEventBackLog = new List<Element>();
+                    ChangeEventBackLog = new List<ElementBase>();
                     foreach (var documentEngine in DocumentEngines.Values)
                     {
                         if (!documentEngine.Enabled)
@@ -360,18 +370,20 @@ namespace SpawnDev.EBML
         /// </summary>
         string _DocType = "";
         bool SkipUnneededData = true;
-        public override IEnumerable<ElementStreamInfo> FindInfo(string path) => FindInfo(path, false);
-        protected internal IEnumerable<ElementStreamInfo> FindInfo(string path, bool useLiveStream)
+        public override IEnumerable<ElementStreamInfo> FindInfo(string path)
         {
-            if (Verbose) Console.WriteLine($"? {path}");
+            var sw = Stopwatch.StartNew();
+            var changed = false;
             var stream = Stream.LatestStable;
             var patchId = stream.PatchId;
             if (Info.PatchId != patchId)
             {
+                changed = true;
                 // patch changed
                 Info.PatchId = patchId;
-                if (Verbose) Console.WriteLine($"Changed to patch: {patchId}");
+                if (Verbose) Console.WriteLine($"*********** Changed to patch: {patchId}");
             }
+            // path must be a full path element 
             if (!path.StartsWith("/")) path = $"/{path}";
             if (CachedItems.TryGetValue(path, out var cacheMatch) && cacheMatch.PatchId == patchId)
             {
@@ -379,6 +391,7 @@ namespace SpawnDev.EBML
                 yield return cacheMatch;
                 yield break;
             }
+            if (Verbose) Console.WriteLine($"? {path}");
             var resultCount = 0;
             var parser = Parser;
             long documentOffset = DocumentOffset;
@@ -389,9 +402,11 @@ namespace SpawnDev.EBML
             if (CachedItems.TryGetValue(filterParentInstancePath, out var parentInfo))
             {
                 // save processing not reiterating parents to get to parent path
+                // TODO
                 var nmt = true;
             }
-            iname = iname.Trim('.');
+            var target = $"{filterParentInstancePath}/{iname},{index}";
+            var singleTarget = index < 0;
             var partType = iname.StartsWith("@") ? iname.Substring(1) : "";
             var partId = !iname.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? 0 : EBMLConverter.ElementIdFromHexId(iname);
             // verify document is EBML
@@ -425,8 +440,9 @@ namespace SpawnDev.EBML
                     ulong? size;
                     try
                     {
-                        id = stream.ReadEBMLElementIdRaw();
-                        size = stream.ReadEBMLElementSizeN();
+                        var header = ElementHeader.Read(stream);
+                        size = header.Size;
+                        id = header.Id;
                     }
                     catch
                     {
@@ -484,8 +500,8 @@ namespace SpawnDev.EBML
                     elementStreamInfo.TypeIndex = elementTypeIndex;
                     elementStreamInfo.DataOffset = dataPosition;
                     elementStreamInfo.PatchId = patchId;
-                    elementStreamInfo.MaxDataSize = maxDataSize;
-                    elementStreamInfo.MaxTotalSize = maxDataSize + headerSize;
+                    elementStreamInfo.DataSize = maxDataSize;
+                    elementStreamInfo.TotalSize = maxDataSize + headerSize;
                     elementStreamInfo.HeaderSize = headerSize;
                     elementStreamInfo.ParentInstancePath = elementParentInstancePath;
                     elementStreamInfo.Depth = elementDepth;
@@ -501,6 +517,11 @@ namespace SpawnDev.EBML
                             if (Verbose) Console.WriteLine($"DocType found: {_DocType}");
                         }
                         stream.Position = dataPosition;
+                    }
+                    // check if this element is an ancestor of our 
+                    if (EBMLConverter.IsAncestor(target, elementInstancePath))
+                    {
+                        skipIfMaster = false;
                     }
                     if (filterParentInstancePath == iteratedInfo.InstancePath && targetParent == null)
                     {
@@ -582,7 +603,7 @@ namespace SpawnDev.EBML
                         {
                             if (i.UnknownSize)
                             {
-                                // can no yield queued results
+                                // can now yield queued results
                                 // TODO
                             }
                             if (Verbose) Console.WriteLine($"<< {i.InstancePath}");
@@ -597,7 +618,268 @@ namespace SpawnDev.EBML
             }
             finally
             {
+                Console.WriteLine($"---------? {path} {sw.Elapsed.TotalMilliseconds}");
                 if (Verbose) Console.WriteLine($"! {resultCount}");
+                if (changed)
+                {
+                    Changed();
+                }
+            }
+        }
+        public override async IAsyncEnumerable<ElementStreamInfo> FindInfoAsync(string path, CancellationToken cancellationToken)
+        {
+            var sw = Stopwatch.StartNew();
+            var changed = false;
+            var stream = Stream.LatestStable;
+            var patchId = stream.PatchId;
+            if (Info.PatchId != patchId)
+            {
+                changed = true;
+                // patch changed
+                Info.PatchId = patchId;
+                if (Verbose) Console.WriteLine($"*********** Changed to patch: {patchId}");
+            }
+            // path must be a full path element 
+            if (!path.StartsWith("/")) path = $"/{path}";
+            if (CachedItems.TryGetValue(path, out var cacheMatch) && cacheMatch.PatchId == patchId)
+            {
+                // save processing not reiterating parents to get to the cached result
+                yield return cacheMatch;
+                yield break;
+            }
+            if (Verbose) Console.WriteLine($"? {path}");
+            var resultCount = 0;
+            var parser = Parser;
+            long documentOffset = DocumentOffset;
+            var startPos = documentOffset;
+            var startInstancePath = "/";
+            EBMLConverter.PathToParentInstancePathNameIndex(path, out var filterParentInstancePath, out var iname, out var index, true);
+            if (string.IsNullOrEmpty(filterParentInstancePath)) filterParentInstancePath = "/";
+            if (CachedItems.TryGetValue(filterParentInstancePath, out var parentInfo))
+            {
+                // save processing not reiterating parents to get to parent path
+                var nmt = true;
+            }
+            var target = $"{filterParentInstancePath}/{iname},{index}";
+            var singleTarget = index < 0;
+            var partType = iname.StartsWith("@") ? iname.Substring(1) : "";
+            var partId = !iname.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? 0 : EBMLConverter.ElementIdFromHexId(iname);
+            // verify document is EBML
+            var pos = stream.Position;
+            stream.Position = documentOffset;
+            if (!parser.IsEBML(stream))
+            {
+                stream.Position = pos;
+                yield break;
+            }
+            try
+            {
+                stream.Position = startPos;
+                var currentIndex = -1;
+                var endPos = stream.Length;
+                var stack = new List<IteratedElementInfo>
+                {
+                    new IteratedElementInfo
+                    {
+                        Path = EBMLConverter.PathFromInstancePath(startInstancePath),
+                        InstancePath = startInstancePath,
+                        MaxDataSize = endPos - documentOffset,
+                    }
+                };
+                var parent = stack.Last();
+                IteratedElementInfo? targetParent = filterParentInstancePath == parent.InstancePath ? parent : null;
+                while (stream.CanRead && stream.Position < endPos)
+                {
+                    var elementOffset = stream.Position;
+                    ulong id;
+                    ulong? size;
+                    ElementHeader header;
+                    try
+                    {
+                        header = await ElementHeader.ReadAsync(stream, cancellationToken);
+                        size = header.Size;
+                        id = header.Id;
+                    }
+                    catch
+                    {
+                        yield break;
+                    }
+                    var dataPosition = stream.Position;
+                    var streamBytesLeft = stream.Length - dataPosition;
+                    var headerSize = dataPosition - elementOffset;
+                    var maxDataSize = size != null ? (long)size.Value : streamBytesLeft;
+                    var schemaElement = parser.GetElement(id, _DocType);
+                    while (parent.UnknownSize && schemaElement != null && !parser.CheckParent(parent!.Path, schemaElement))
+                    {
+                        if (parent == targetParent)
+                        {
+                            yield break;
+                        }
+                        if (stack.Count == 1)
+                        {
+                            yield break;
+                        }
+                        stack.Remove(parent);
+                        parent = stack.Last();
+                    }
+                    var skipIfMaster = SkipUnneededData;
+                    var elementType = schemaElement?.Type;
+                    var elementIndex = parent.ChildCount;
+                    var elementTypeIndex = parent.Seen(id);
+                    var elementName = schemaElement?.Name ?? EBMLConverter.ElementIdToHexId(id);
+                    var elementPath = $"{parent.Path.TrimEnd(EBMLParser.PathDelimiters)}{EBMLParser.PathDelimiter}{elementName}";
+                    var elementInstancePath = $"{parent.InstancePath.TrimEnd(EBMLParser.PathDelimiters)}{EBMLParser.PathDelimiter}{elementName},{elementTypeIndex}";
+                    var elementDepth = elementPath.Split(EBMLParser.PathDelimiters, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Length - 1;
+                    var elementParentInstancePath = EBMLConverter.PathParent(elementInstancePath);
+                    var iteratedInfo = new IteratedElementInfo
+                    {
+                        Path = elementPath,
+                        InstancePath = elementInstancePath,
+                        MaxDataSize = maxDataSize,
+                        UnknownSize = size == null,
+                        DataOffset = dataPosition,
+                        Depth = elementDepth,
+                    };
+                    if (!CachedItems.TryGetValue(elementInstancePath, out var elementStreamInfo))
+                    {
+                        elementStreamInfo = new ElementStreamInfo();
+                        CachedItems.Add(elementInstancePath, elementStreamInfo);
+                    }
+                    elementStreamInfo.Offset = elementOffset;
+                    elementStreamInfo.Id = id;
+                    elementStreamInfo.Name = elementName;
+                    elementStreamInfo.SchemaElement = schemaElement;
+                    elementStreamInfo.Index = parent.ChildCount - 1;
+                    elementStreamInfo.Path = elementPath;
+                    elementStreamInfo.InstancePath = elementInstancePath;
+                    elementStreamInfo.Size = size;
+                    elementStreamInfo.TypeIndex = elementTypeIndex;
+                    elementStreamInfo.DataOffset = dataPosition;
+                    elementStreamInfo.PatchId = patchId;
+                    elementStreamInfo.DataSize = maxDataSize;
+                    elementStreamInfo.TotalSize = maxDataSize + headerSize;
+                    elementStreamInfo.HeaderSize = headerSize;
+                    elementStreamInfo.ParentInstancePath = elementParentInstancePath;
+                    elementStreamInfo.Depth = elementDepth;
+                    elementStreamInfo.DocumentOffset = documentOffset;
+                    elementStreamInfo.Exists = true;
+                    if (Verbose) Console.WriteLine($"{new string(' ', 2 * elementDepth + 1)} {elementIndex} {elementOffset} {maxDataSize} {elementName} {iteratedInfo.InstancePath}");
+                    if (iteratedInfo.InstancePath == "/EBML,0/DocType,0")
+                    {
+                        var dt = stream.ReadEBMLStringASCII((int)size!.Value);
+                        if (!string.IsNullOrEmpty(dt) && dt != _DocType)
+                        {
+                            _DocType = dt;
+                            if (Verbose) Console.WriteLine($"DocType found: {_DocType}");
+                        }
+                        stream.Position = dataPosition;
+                    }
+                    // check if this element is an ancestor of our 
+                    if (EBMLConverter.IsAncestor(target, elementInstancePath))
+                    {
+                        skipIfMaster = false;
+                    }
+                    if (filterParentInstancePath == iteratedInfo.InstancePath && targetParent == null)
+                    {
+                        // target parent found
+                        skipIfMaster = false;
+                        targetParent = iteratedInfo;
+                    }
+                    else if (targetParent == parent || (targetParent == null && filterParentInstancePath == parent.InstancePath))
+                    {
+                        targetParent = parent;
+                        var partTypeMatches = (partType == elementType) || partType == "strings" && (elementType == "string" || elementType == "utf-8");
+                        // inside target parent. check if element filters match
+                        if (
+                            (partId > 0 && partId == id)
+                            || partTypeMatches
+                            || iname == elementName
+                            || iname == "")
+                        {
+                            // match found for at 1 except index
+                            currentIndex++;
+                            if (index == currentIndex || index == -1)
+                            {
+                                // TODO - if this element is unknown size, defer all further yields (to maintain yield order) until size is determined
+                                // need test media with unknown size element. will create using browser (they create webm videos with elements of unknown size)
+                                // ... or, add a method to MasterElement GetSize() that will the master element's size
+                                resultCount++;
+                                if (Verbose) Console.WriteLine($"Match: ^^^^^^^^^^^^^^^");
+                                yield return elementStreamInfo!;
+                                stream.Position = dataPosition;
+                                if (index == currentIndex)
+                                {
+                                    yield break;
+                                }
+                            }
+                        }
+                    }
+                    // The end of an Unknown - Sized Element is determined by whichever comes first:
+                    // - Any EBML Element that is a valid Parent Element of the Unknown - Sized Element according to the EBML Schema, Global Elements excluded.
+                    // - Any valid EBML Element according to the EBML Schema, Global Elements excluded, that is not a Descendant Element of the Unknown-Sized Element but shares a common direct parent, such as a Top - Level Element.
+                    // - Any EBML Element that is a valid Root Element according to the EBML Schema, Global Elements excluded.
+                    // - The end of the Parent Element with a known size has been reached.
+                    // - The end of the EBML Document, either when reaching the end of the file or because a new EBML Header started.
+                    if (schemaElement?.Type == "master")
+                    {
+                        if (elementName == "EBML" && (!CachedItems.TryGetValue("/EBML,0/DocType,0", out var docTypeInfo) || docTypeInfo.PatchId != patchId))
+                        {
+                            // iterate EBML to try and get DocType
+                            skipIfMaster = false;
+                        }
+                        if (skipIfMaster && size != null)
+                        {
+                            // we can only skip this if it does not match our filter
+                            stream.Position = dataPosition + (long)size.Value;
+                        }
+                        else
+                        {
+                            // has to be iterated
+                            stack.Add(iteratedInfo);
+                            parent = iteratedInfo;
+                            if (Verbose) Console.WriteLine($">> {parent.InstancePath}");
+                        }
+                    }
+                    else
+                    {
+                        // skip data (only master elements are allowed to be unknown size according the EBML spec
+                        stream.Position = dataPosition + (long)size!.Value;
+                    }
+                    // all elements after and including the first element that has ended have ended
+                    var ended = stack.Where(o => o.MaxDataSize + o.DataOffset <= stream.Position).FirstOrDefault();
+                    if (ended != null)
+                    {
+                        var endedIndex = stack.IndexOf(ended);
+                        var allEnded = stack.Skip(endedIndex).ToList();
+                        stack = stack.Take(endedIndex).ToList();
+                        // remove starting with the last
+                        // not needed ATM but will be if there are unreported results due to unknown sized elements
+                        allEnded.Reverse();
+                        foreach (var i in allEnded)
+                        {
+                            if (i.UnknownSize)
+                            {
+                                // can now yield queued results
+                                // TODO
+                            }
+                            if (Verbose) Console.WriteLine($"<< {i.InstancePath}");
+                        }
+                        if (stack.Count == 0)
+                        {
+                            yield break;
+                        }
+                        parent = stack.Last();
+                    }
+                }
+            }
+            finally
+            {
+                Console.WriteLine($"---------? {path} {sw.Elapsed.TotalMilliseconds}");
+                if (Verbose) Console.WriteLine($"! {resultCount}");
+                if (changed)
+                {
+                    Changed();
+                }
             }
         }
     }

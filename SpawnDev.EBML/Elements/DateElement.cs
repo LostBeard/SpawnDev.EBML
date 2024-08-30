@@ -2,21 +2,25 @@
 
 namespace SpawnDev.EBML.Elements
 {
-    public class DateElement : Element
+    public class DateElement : ElementBase
     {
+        /// <summary>
+        /// The element type name
+        /// </summary>
+        public const string TypeName  = "date";
         public DateTime Data
         {
             get
             {
                 if (!Exists) return default;
                 Stream.Position = DataOffset;
-                return Stream.ReadEBMLDate((int)MaxDataSize);
+                return Stream.ReadEBMLDate((int)DataSize);
             }
             set
             {
                 ReplaceData(EBMLConverter.ToDateBytes(value));
             }
         }
-        public DateElement(Document document, ElementStreamInfo element) : base(document, element) { }
+        public DateElement(EBMLDocument document, ElementStreamInfo element) : base(document, element) { }
     }
 }

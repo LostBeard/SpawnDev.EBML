@@ -7,7 +7,7 @@ namespace SpawnDev.EBML.ElementTypes
     /// CRC-32 element<br/>
     /// </summary>
     [ElementName("ebml", "CRC-32")]
-    public class CRC32Element : Element
+    public class CRC32Element : ElementBase
     {
         /// <summary>
         /// Returns the element's data as  PatchStream stream.<br/>
@@ -17,7 +17,7 @@ namespace SpawnDev.EBML.ElementTypes
         {
             get
             {
-                var bytes = new byte[MaxDataSize];
+                var bytes = new byte[DataSize];
                 Stream.LatestStable.Position = DataOffset;
                 _ = Stream.LatestStable.Read(bytes);
                 return bytes;
@@ -70,6 +70,6 @@ namespace SpawnDev.EBML.ElementTypes
         /// New instance
         /// </summary>
         /// <param name="element"></param>
-        public CRC32Element(Document document, ElementStreamInfo element) : base(document, element) { }
+        public CRC32Element(EBMLDocument document, ElementStreamInfo element) : base(document, element) { }
     }
 }

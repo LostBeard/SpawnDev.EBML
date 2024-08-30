@@ -9,7 +9,7 @@ namespace SpawnDev.EBML.Elements
     /// <summary>
     /// An EBML element
     /// </summary>
-    public partial class Element
+    public class ElementBase
     {
         /// <summary>
         /// Instance stream info
@@ -23,7 +23,7 @@ namespace SpawnDev.EBML.Elements
                     var info = Document.FindInfo(_Info.InstancePath).FirstOrDefault();
                     if (info != null)
                     {
-                        _Info.Exists = true;
+                        _Info.Exists = true;    
                         if (_Info != info) _Info = info;
                     }
                     else
@@ -42,7 +42,7 @@ namespace SpawnDev.EBML.Elements
         /// </summary>
         /// <typeparam name="TElement">Element type to return</typeparam>
         /// <returns></returns>
-        public TElement As<TElement>() where TElement : Element
+        public TElement As<TElement>() where TElement : ElementBase
         {
             if (this is TElement element) return (TElement)element;
             var ret = (TElement)Activator.CreateInstance(typeof(TElement), Document, Info)!;
@@ -111,7 +111,7 @@ namespace SpawnDev.EBML.Elements
         /// <summary>
         /// The Document this element belong(s|ed) to
         /// </summary>
-        public virtual Document Document { get; protected set; }
+        public virtual EBMLDocument Document { get; protected set; }
         /// <summary>
         /// EBML schema parser
         /// </summary>
@@ -166,7 +166,7 @@ namespace SpawnDev.EBML.Elements
         /// <summary>
         /// The position of the byte following this element
         /// </summary>
-        public long EndPos => Offset + MaxTotalSize;
+        public long EndPos => Offset + TotalSize;
         /// <summary>
         /// The size of this element, if specified by header
         /// </summary>
@@ -178,11 +178,11 @@ namespace SpawnDev.EBML.Elements
         /// <summary>
         /// The size of this element, if specified by header, else the size of data left in the stream
         /// </summary>
-        public long MaxDataSize => DocumentRoot ? Stream.LatestStable.Length - DocumentOffset : Info.MaxDataSize;
+        public long DataSize => DocumentRoot ? Stream.LatestStable.Length - DocumentOffset : Info.DataSize;
         /// <summary>
         /// The total size of this element. Header size + data size.
         /// </summary>
-        public long MaxTotalSize => DocumentRoot ? Stream.LatestStable.Length - DocumentOffset : Info.MaxTotalSize;
+        public long TotalSize => DocumentRoot ? Stream.LatestStable.Length - DocumentOffset : Info.TotalSize;
         /// <summary>
         /// The position in the stream where this element's data starts
         /// </summary>
@@ -198,7 +198,7 @@ namespace SpawnDev.EBML.Elements
         /// <summary>
         /// Returns true if this element has an empty name and Offset == DocumentOffset
         /// </summary>
-        public bool DocumentRoot => this is Document;
+        public bool DocumentRoot => this is EBMLDocument;
         /// <summary>
         /// The number of elements if this elements path - 1
         /// </summary>
@@ -216,7 +216,7 @@ namespace SpawnDev.EBML.Elements
         /// Creates a new instance
         /// </summary>
         /// <param name="element"></param>
-        public Element(Document document, ElementStreamInfo element)
+        public ElementBase(EBMLDocument document, ElementStreamInfo element)
         {
             //Console.WriteLine($"** {GetType().Name}");
             if (element == null) throw new ArgumentNullException(nameof(element));
@@ -227,7 +227,7 @@ namespace SpawnDev.EBML.Elements
         /// <summary>
         /// Constructor for derived classes
         /// </summary>
-        protected Element()
+        protected ElementBase()
         {
             //Console.WriteLine($"** {GetType().Name}");
         }
@@ -281,7 +281,7 @@ namespace SpawnDev.EBML.Elements
         /// </summary>
         /// <param name="changedElement">The element that is calling the event</param>
         /// <param name="newDataSize">The number of bytes added or removed from this element's data. May be 0, but this needs to be called if the element's data has changed</param>
-        protected internal virtual void DataChanged(Element changedElement, long newDataSize)
+        protected internal virtual void DataChanged(ElementBase changedElement, long newDataSize)
         {
             Document.DataChanged(changedElement, newDataSize);
         }
@@ -295,7 +295,7 @@ namespace SpawnDev.EBML.Elements
         /// <returns></returns>
         public PatchStream ElementStreamSlice()
         {
-            return Stream.Slice(Offset, MaxTotalSize);
+            return Stream.Slice(Offset, TotalSize);
         }
         /// <summary>
         /// Returns the element data as a PatchStream
@@ -303,7 +303,17 @@ namespace SpawnDev.EBML.Elements
         /// <returns></returns>
         public PatchStream ElementStreamDataSlice()
         {
-            return Stream.Slice(DataOffset, MaxDataSize);
+            return Stream.Slice(DataOffset, DataSize);
+        }
+        public virtual void CopyTo(Stream stream)
+        {
+            Stream.Position = Offset;
+            Stream.CopyTo(stream, (int)TotalSize);
+        }
+        public virtual async Task CopyToAsync(Stream stream, CancellationToken cancellationToken)
+        {
+            Stream.Position = Offset;
+            await Stream.CopyToAsync(stream, (int)TotalSize, cancellationToken);
         }
         /// <summary>
         /// Replace this element's data with the specified stream
@@ -314,6 +324,24 @@ namespace SpawnDev.EBML.Elements
             ReplaceData(new MemoryStream(replacementData));
         }
         /// <summary>
+        /// The element type
+        /// </summary>
+        public string Type => DocumentRoot ? "document" : SchemaElement?.Type ?? "";
+        /// <summary>
+        /// A string that represents this element
+        /// </summary>
+        public virtual string DataString
+        {
+            get
+            {
+                return $"{InstancePath}";
+            }
+            set
+            {
+
+            }
+        }
+        /// <summary>
         /// Replace this element's data with the specified stream
         /// </summary>
         /// <param name="replacementData"></param>
@@ -321,7 +349,7 @@ namespace SpawnDev.EBML.Elements
         {
             ThrowIfCannotEdit();
             Stream.Position = DataOffset;
-            Stream.Insert(replacementData, MaxDataSize);
+            Stream.Insert(replacementData, DataSize);
             DataChanged(this, replacementData.Length);
         }
         /// <summary>
@@ -332,24 +360,24 @@ namespace SpawnDev.EBML.Elements
         {
             ThrowIfCannotEdit();
             Stream.Position = DataOffset;
-            Stream.Delete(MaxDataSize);
+            Stream.Delete(DataSize);
             DataChanged(this, 0);
         }
         #region Equals
-        public static bool operator ==(Element? b1, Element? b2)
+        public static bool operator ==(ElementBase? b1, ElementBase? b2)
         {
             if ((object?)b1 == null) return (object?)b2 == null;
             return b1.Equals(b2);
         }
 
-        public static bool operator !=(Element? b1, Element? b2)
+        public static bool operator !=(ElementBase? b1, ElementBase? b2)
         {
             return !(b1 == b2);
         }
 
         public override bool Equals(object? obj)
         {
-            if (obj == null || !(obj is Element element)) return false;
+            if (obj == null || !(obj is ElementBase element)) return false;
             // if the instance path is different or the Document is different ? false
             if (InstancePath != element.InstancePath || !object.ReferenceEquals(Document, element.Document)) return false;
             return true;

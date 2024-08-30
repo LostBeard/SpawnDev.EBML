@@ -1,8 +1,10 @@
-﻿using System.Text;
+﻿using System.Drawing;
+using System.IO;
+using System.Text;
 
 namespace SpawnDev.EBML.Extensions
 {
-    internal static class EBMLStreamExtensions
+    internal static partial class EBMLStreamExtensions
     {
         public static MemoryStream CreateEBMLHeader(ulong id, ulong size, int sizeMinOctets = 0)
         {
@@ -122,6 +124,18 @@ namespace SpawnDev.EBML.Extensions
                 _this.Position = origPosition;
             }
         }
+        public static async Task<int> ReadByteAsync(this Stream _this, CancellationToken cancellationToken)
+        {
+            var oneByteArray = new byte[1];
+            int r = await _this.ReadAsync(oneByteArray, 0, 1, cancellationToken);
+            return r == 0 ? -1 : oneByteArray[0];
+        }
+        public static async Task<byte> ReadByteOrThrowAsync(this Stream _this, CancellationToken cancellationToken)
+        {
+            var ret = await _this.ReadByteAsync(cancellationToken);
+            if (ret == -1) throw new EndOfStreamException();
+            return (byte)ret;
+        }
         public static byte ReadByteOrThrow(this Stream _this)
         {
             var ret = _this.ReadByte();
@@ -149,10 +163,7 @@ namespace SpawnDev.EBML.Extensions
             for (var i = 0; i < 8; i++)
             {
                 var v = 1 << 7 - i;
-                if ((value & v) != 0)
-                {
-                    return i;
-                }
+                if ((value & v) != 0) return i;
             }
             return -1;
         }
@@ -198,10 +209,24 @@ namespace SpawnDev.EBML.Extensions
             if (isUnknownSize) return null;
             return ret;
         }
+        public static async Task<ulong?> ReadEBMLElementSizeNAsync(this Stream data, CancellationToken cancellationToken)
+        {
+            var ret = data.ReadEBMLElementSize(out var isUnknownSize);
+            if (isUnknownSize) return null;
+            return ret;
+        }
         public static string ReadEBMLElementIdRawHex(this Stream data)
         {
             var id = data.ReadEBMLElementIdRaw();
             return EBMLConverter.ElementIdToHexId(id);
+        }
+        public static ElementHeader ReadEBMLElementHeader(this Stream data)
+        {
+            var id = data.ReadEBMLElementIdRaw();
+            var pos = data.Position;
+            var size = data.ReadEBMLElementSizeN();
+            var sizeLength = data.Position - pos;
+            return new ElementHeader(id, size, (int)sizeLength);
         }
         /// <summary>
         /// Reads a vint, but does not discard the size bit
@@ -221,7 +246,38 @@ namespace SpawnDev.EBML.Extensions
             var ulongBytes = new byte[8];
             var destIndex = 8 - bitIndex;
             ulongBytes[destIndex - 1] = firstByte;
-            if (bitIndex > 0) data.Read(ulongBytes, destIndex, bitIndex);
+            if (bitIndex > 0)
+            {
+                var bytesRead = data.Read(ulongBytes, destIndex, bitIndex);
+                if (bitIndex != bytesRead)
+                {
+                    throw new Exception("End of EBML stream");
+                }
+            }
+            var ret = BigEndian.ToUInt64(ulongBytes);
+            return ret;
+        }
+        public static async Task<ulong> ReadEBMLElementIdRawAsync(this Stream data, CancellationToken cancellationToken)
+        {
+            var firstByte = await data.ReadByteOrThrowAsync(cancellationToken);
+            var bitIndex = GetFirstSetBitIndex(firstByte);
+            if (bitIndex < 0)
+            {
+                ////vintDataAllOnes = false;
+                // throw?
+                return 0; // marker bit must be in first byte (verify correct response to this) 
+            }
+            var ulongBytes = new byte[8];
+            var destIndex = 8 - bitIndex;
+            ulongBytes[destIndex - 1] = firstByte;
+            if (bitIndex > 0)
+            {
+                var bytesRead = await data.ReadAsync(ulongBytes, destIndex, bitIndex, cancellationToken);
+                if (bitIndex != bytesRead)
+                {
+                    throw new Exception("End of EBML stream");
+                }
+            }
             var ret = BigEndian.ToUInt64(ulongBytes);
             return ret;
         }
@@ -259,6 +315,42 @@ namespace SpawnDev.EBML.Extensions
             var ret = BigEndian.ToUInt64(ulongBytes);
             vintDataAllOnes = EBMLConverter.IsUnknownSizeVINT(ret, bitIndex + 1);
             return ret;
+        }
+        public static ulong? ReadEBMLVINTN(this Stream data)
+        {
+            bool vintDataAllOnes = false;
+            var firstByte = data.ReadByteOrThrow();
+            var bitIndex = GetFirstSetBitIndex(firstByte, out var leftover);
+            if (bitIndex < 0) throw new Exception("Invalid VINT");
+            var ulongBytes = new byte[8];
+            var destIndex = 8 - bitIndex;
+            ulongBytes[destIndex - 1] = leftover;
+            if (bitIndex > 0)
+            {
+                var bytesRead = data.Read(ulongBytes, destIndex, bitIndex);
+                if (bytesRead != bitIndex) throw new Exception("End of stream");
+            }
+            var ret = BigEndian.ToUInt64(ulongBytes);
+            vintDataAllOnes = EBMLConverter.IsUnknownSizeVINT(ret, bitIndex + 1);
+            return vintDataAllOnes ? null : ret;
+        }
+        public static async Task<ulong?> ReadEBMLVINTNAsync(this Stream data, CancellationToken cancellationToken)
+        {
+            bool vintDataAllOnes = false;
+            var firstByte = await data.ReadByteOrThrowAsync(cancellationToken);
+            var bitIndex = GetFirstSetBitIndex(firstByte, out var leftover);
+            if (bitIndex < 0) throw new Exception("Invalid VINT");
+            var ulongBytes = new byte[8];
+            var destIndex = 8 - bitIndex;
+            ulongBytes[destIndex - 1] = leftover;
+            if (bitIndex > 0)
+            {
+                var bytesRead = await data.ReadAsync(ulongBytes, destIndex, bitIndex, cancellationToken);
+                if (bytesRead != bitIndex) throw new Exception("End of stream");
+            }
+            var ret = BigEndian.ToUInt64(ulongBytes);
+            vintDataAllOnes = EBMLConverter.IsUnknownSizeVINT(ret, bitIndex + 1);
+            return vintDataAllOnes ? null : ret;
         }
         public static ulong ReadEBMLUInt(this Stream stream, int size)
         {

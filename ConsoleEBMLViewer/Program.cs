@@ -3,13 +3,19 @@ using SpawnDev.EBML.Elements;
 using SpawnDev.EBML.ElementTypes;
 using SpawnDev.EBML.Matroska;
 
+var bigFile = @"k:\Video\Alita Battle Angel.mkv";
 var file1 = @"TestData/Big_Buck_Bunny_180 10s.webm";
 var file2 = @"k:\Video\matroska_audio_test.mka";
 
 // input stream
-using var fileStreamIn = File.Open(file1, FileMode.Open);
+using var fileStreamIn = File.Open(bigFile, new FileStreamOptions { Options = FileOptions.Asynchronous, Mode = FileMode.Open, Access = FileAccess.Read, Share = FileShare.Read });
+var existingDoc = new EBMLDocument(fileStreamIn);
 
-var newDoc = new Document("webm");
+var info = existingDoc.Find("/Segment/Info/").ToList();
+
+var els1 = await existingDoc.FindAsync("/Segment/", CancellationToken.None).ToListAsync();
+
+var newDoc = new EBMLDocument("webm");
 Console.WriteLine($"DocType: 'webm' == {newDoc.DocType}");
 
 Console.WriteLine($"DocType: 'webm' == {newDoc.DocType}");

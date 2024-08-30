@@ -5,8 +5,12 @@ namespace SpawnDev.EBML.Elements
     /// <summary>
     /// Basic read all, write all binary element<br/>
     /// </summary>
-    public class BinaryElement : Element
+    public class BinaryElement : ElementBase
     {
+        /// <summary>
+        /// The element type name
+        /// </summary>
+        public const string TypeName = "binary";
         /// <summary>
         /// Returns the element's data as  PatchStream stream.<br/>
         /// Editing the returned stream will not modify the element
@@ -24,6 +28,6 @@ namespace SpawnDev.EBML.Elements
         /// New instance
         /// </summary>
         /// <param name="element"></param>
-        public BinaryElement(Document document, ElementStreamInfo element) : base(document, element) { }
+        public BinaryElement(EBMLDocument document, ElementStreamInfo element) : base(document, element) { }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using SpawnDev.EBML.Schemas;
+using System;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -211,11 +212,108 @@ namespace SpawnDev.EBML.Extensions
             leftover = 0;
             return -1;
         }
+        private static int GetFirstSetBitIndex(byte value)
+        {
+            for (var i = 0; i < 8; i++)
+            {
+                var v = 1 << 7 - i;
+                if ((value & v) != 0) return i;
+            }
+            return -1;
+        }
         public static ulong ToElementSize(byte[] data, out int vintSize, out bool isUnknownSize, int index = 0)
         {
             var size = ToVINT(data, out vintSize, index);
             isUnknownSize = IsUnknownSizeVINT(size, vintSize);
             return size;
+        }
+        public static ulong? ToElementSizeN(byte[] data, out int vintSize, out bool isUnknownSize, int index = 0)
+        {
+            var size = ToVINT(data, out vintSize, index);
+            isUnknownSize = IsUnknownSizeVINT(size, vintSize);
+            return isUnknownSize ? null : size;
+        }
+        public static int ReadElementHeader(byte[] data, out ulong id, out ulong? size, out int sizeLength)
+        {
+            var position = 0;
+            var succ = ReadElementHeader(data, out id, out size, out sizeLength, ref position);
+            return succ ? position : 0;
+        }
+        public static bool ReadElementHeader(byte[] data, out ulong id, out ulong? size, out int sizeLength, ref int position)
+        {
+            try
+            {
+                id = ReadElementIdRaw(data, ref position);
+                var pos = position;
+                size = ReadElementSizeN(data, ref position);
+                sizeLength = position - pos;
+                return true;
+            }
+            catch(Exception ex)
+            {
+                id = 0;
+                size = null;
+                sizeLength = 0;
+                return false;
+            }
+        }
+        public static bool IsParent(string instancePath, string test)
+        {
+            var parent = PathParent(instancePath);
+            var ret = parent == test;
+            return ret;
+        }
+        public static bool IsAncestor(string instancePath, string test)
+        {
+            var ret = $"{instancePath}/".StartsWith($"{test}/");
+            return ret;
+        }
+        public static List<string> GetAncestorInstancePaths(string instancePath, bool removeRoot = false)
+        {
+            var ret = new List<string>();
+            var path = EBMLConverter.PathParent(instancePath);
+            while (!string.IsNullOrEmpty(path))
+            {
+                if (removeRoot && path == "/") break;
+                ret.Add(path);
+                path = EBMLConverter.PathParent(path);
+                if (ret.Count > 5)
+                {
+                    var ggg = true;
+                }
+            }
+            return ret;
+        }
+        /// <summary>
+        /// V3
+        /// </summary>
+        /// <param name="data"></param>
+        /// <param name="position"></param>
+        /// <returns></returns>
+        public static ulong? ReadElementSizeN(byte[] data, ref int position)
+        {
+            var size = ToVINT(data, out var vintSize, position);
+            var isUnknownSize = IsUnknownSizeVINT(size, vintSize);
+            position += vintSize;
+            return isUnknownSize ? null : size;
+        }
+        /// <summary>
+        /// V3
+        /// </summary>
+        /// <param name="data"></param>
+        /// <param name="position"></param>
+        /// <returns></returns>
+        public static ulong ReadElementIdRaw(byte[] data, ref int position)
+        {
+            var firstByte = data[position];
+            var bitIndex = GetFirstSetBitIndex(firstByte);
+            if (bitIndex < 0) throw new Exception("Invalid data");
+            var ulongBytes = new byte[8];
+            var destIndex = 8 - bitIndex;
+            ulongBytes[destIndex - 1] = firstByte;
+            if (bitIndex > 0) Buffer.BlockCopy(data, position + 1, ulongBytes, destIndex, bitIndex);
+            position = bitIndex + 1;
+            return BigEndian.ToUInt64(ulongBytes);
         }
         public static ulong ToElementId(byte[] data, out int vintSize, out bool isInvalid, int index = 0)
         {
@@ -224,15 +322,19 @@ namespace SpawnDev.EBML.Extensions
             return size;
         }
         public static ulong ToElementId(byte[] data, out int vintSize, int index = 0) => ToVINT(data, out vintSize, index);
+        /// <summary>
+        /// V3
+        /// </summary>
+        /// <param name="data"></param>
+        /// <param name="size"></param>
+        /// <param name="index"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
         public static ulong ToVINT(byte[] data, out int size, int index = 0)
         {
             var firstByte = data[index];
             var bitIndex = GetFirstSetBitIndex(firstByte, out var leftover);
-            if (bitIndex < 0)
-            {
-                size = 0;
-                return 0; // marker bit must be in first byte (verify correct response to this)
-            }
+            if (bitIndex < 0) throw new Exception("Invalid data");
             var ulongBytes = new byte[8];
             var destIndex = 8 - bitIndex;
             ulongBytes[destIndex - 1] = leftover;

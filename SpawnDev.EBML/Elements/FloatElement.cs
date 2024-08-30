@@ -2,20 +2,24 @@
 
 namespace SpawnDev.EBML.Elements
 {
-    public class FloatElement : Element
+    public class FloatElement : ElementBase
     {
+        /// <summary>
+        /// The element type name
+        /// </summary>
+        public const  string TypeName  = "float";
         public double Data
         {
             get
             {
                 Stream.Position = DataOffset;
-                return Stream.ReadEBMLFloat((int)MaxDataSize);
+                return Stream.ReadEBMLFloat((int)DataSize);
             }
             set
             {
                 ReplaceData(EBMLConverter.ToFloatBytes(value));
             }
         }
-        public FloatElement(Document document, ElementStreamInfo element) : base(document, element) { }
+        public FloatElement(EBMLDocument document, ElementStreamInfo element) : base(document, element) { }
     }
 }

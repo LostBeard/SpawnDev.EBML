@@ -10,6 +10,6 @@ namespace SpawnDev.EBML.Matroska
         /// New instance
         /// </summary>
         /// <param name="element"></param>
-        public Cluster(Document document, ElementStreamInfo element) : base(document, element) { }
+        public Cluster(EBMLDocument document, ElementStreamInfo element) : base(document, element) { }
     }
 }

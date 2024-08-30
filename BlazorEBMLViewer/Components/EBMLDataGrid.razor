@@ -2,7 +2,7 @@
 @using SpawnDev.EBML.Elements
 @using System.Linq.Dynamic.Core
 
-<RadzenDataGrid TItem="BaseElement" IsLoading="@(IsLoading || DocumentBusy)" RowUpdate="@OnUpdateRow" CellClick="OnCellClick" ColumnWidth="auto" AllowColumnResize="true" @ref=grid Data="@orderDetails"
+<RadzenDataGrid TItem="ElementBase" IsLoading="@(IsLoading || DocumentBusy)" RowUpdate="@OnUpdateRow" CellClick="OnCellClick" ColumnWidth="auto" AllowColumnResize="true" @ref=grid Data="@orderDetails"
                 SelectionMode="DataGridSelectionMode.Single"
                 AllowRowSelectOnRowClick="true" RowSelect="RowSelect" RowDeselect="RowDeselect"
                 RowDoubleClick="RowDoubleClick" Count="@count" LoadData="@LoadData" AllowVirtualization="true" Style="width: 100%; height: 100%;"
@@ -10,22 +10,22 @@
                 LogicalFilterOperator="LogicalFilterOperator.Or"
                 AllowSorting="true"> 
     <Columns>
-        <RadzenDataGridColumn Filterable="false" Property="@nameof(BaseElement.Index)" Title="" Width="40px" />
-        <RadzenDataGridColumn Sortable="false" Filterable="false" Property="@nameof(BaseElement.Offset)" Title="" Width="40px" />
+        <RadzenDataGridColumn Filterable="false" Property="@nameof(ElementBase.Index)" Title="" Width="40px" />
+        <RadzenDataGridColumn Sortable="false" Filterable="false" Property="@nameof(ElementBase.Offset)" Title="" Width="40px" />
         <RadzenDataGridColumn Filterable="false" Title="" Width="40px">
             <Template Context="detail">
                 <RadzenIcon Icon="@AppService.GetElementTypeIcon(detail.SchemaElement)"></RadzenIcon>
             </Template>
         </RadzenDataGridColumn>
-        <RadzenDataGridColumn FilterProperty="@nameof(BaseElement.IdHex)" SortProperty="@nameof(BaseElement.Id)" Property="@nameof(BaseElement.IdHex)" Title="Id" Width="110px" />
-        <RadzenDataGridColumn Property="@nameof(BaseElement.Name)" Title="Name" Width="150px" />
-        <RadzenDataGridColumn Property="@nameof(BaseElement.Type)" Title="Type" Width="110px" />
-        <RadzenDataGridColumn Filterable="false" Property="@nameof(BaseElement.DataSize)" Title="Size" Width="110px">
+        <RadzenDataGridColumn FilterProperty="@nameof(ElementBase.HexId)" SortProperty="@nameof(ElementBase.Id)" Property="@nameof(ElementBase.HexId)" Title="Id" Width="110px" />
+        <RadzenDataGridColumn Property="@nameof(ElementBase.Name)" Title="Name" Width="150px" />
+        <RadzenDataGridColumn Property="@nameof(ElementBase.Type)" Title="Type" Width="110px" />
+        <RadzenDataGridColumn Filterable="false" Property="@nameof(ElementBase.DataSize)" Title="Size" Width="110px">
             <Template Context="detail">
                 @HumandReadableBytes(detail.DataSize)
             </Template>
         </RadzenDataGridColumn>
-        <RadzenDataGridColumn Title="Value" Width="400px" IsInEditMode="IsEditing" TItem="BaseElement" Property="@nameof(BaseElement.DataString)">
+        <RadzenDataGridColumn Title="Value" Width="400px" IsInEditMode="IsEditing" TItem="ElementBase" Property="@nameof(ElementBase.DataString)">
             <Template Context="detail">
                 @detail.DataString
             </Template>
@@ -40,37 +40,38 @@
                     case "date":
                         {
                             var el = detail as DateElement;
-                            <RadzenDatePicker @bind-Value=@el.Data Name="RadzenDatePickerBindValue" ShowCalendarWeek />
+                            <RadzenDatePicker @bind-Value=@el!.Data Name="RadzenDatePickerBindValue" ShowCalendarWeek />
                             break;
                         }
                     case "binary":
                         {
                             var el = detail as BinaryElement;
-                            <BinaryElementCellEditor Element="el"></BinaryElementCellEditor>
+                            <BinaryElementCellEditor EBMLElement="el"></BinaryElementCellEditor>
                             break;
                         }
                     case "float":
                         {
                             var el = detail as FloatElement;
-                            <RadzenNumeric ShowUpDown="false" TValue="double" @bind-Value=@el.Data InputAttributes="@(new Dictionary<string,object>(){ { "aria-label", "enter value" }})" />
+                            <RadzenNumeric ShowUpDown="false" TValue="double" @bind-Value=@el!.Data InputAttributes="@(new Dictionary<string,object>(){ { "aria-label", "enter value" }})" />
                             break;
                         }
                     case "uinteger":
                         {
                             var el = detail as UintElement;
-                            <RadzenNumeric ShowUpDown="false" TValue="ulong" @bind-Value=@el.Data InputAttributes="@(new Dictionary<string,object>(){ { "aria-label", "enter value" }})" />
+                            <RadzenNumeric ShowUpDown="false" TValue="ulong" @bind-Value=@el!.Data InputAttributes="@(new Dictionary<string,object>(){ { "aria-label", "enter value" }})" />
                             break;
                         }
                     case "integer":
                         {
                             var el = detail as IntElement;
-                            <RadzenNumeric ShowUpDown="false" TValue="long" @bind-Value=@el.Data InputAttributes="@(new Dictionary<string,object>(){ { "aria-label", "enter value" }})" />
+                            <RadzenNumeric ShowUpDown="false" TValue="long" @bind-Value=@el!.Data InputAttributes="@(new Dictionary<string,object>(){ { "aria-label", "enter value" }})" />
                             break;
                         }
                     case "utf-8":
                     case "string":
                         {
-                            <RadzenTextBox @bind-Value="detail.DataString" Style="width:200px; display: block" aria-label="Enter new value" />
+                            var el = detail as StringElement;
+                            <RadzenTextBox @bind-Value="el!.Data" Style="width:200px; display: block" aria-label="Enter new value" />
                             break;
                         }
                 }

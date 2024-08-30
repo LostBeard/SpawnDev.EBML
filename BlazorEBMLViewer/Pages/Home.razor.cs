@@ -6,7 +6,6 @@ using Radzen;
 using SpawnDev.BlazorJS;
 using SpawnDev.BlazorJS.JSObjects;
 using SpawnDev.BlazorJS.Toolbox;
-using SpawnDev.EBML;
 using SpawnDev.EBML.Elements;
 using SpawnDev.EBML.Schemas;
 using File = SpawnDev.BlazorJS.JSObjects.File;
@@ -16,7 +15,7 @@ namespace BlazorEBMLViewer.Pages
     public partial class Home : IDisposable
     {
         public bool DocumentBusy { get; set; }
-        public SpawnDev.EBML.Document? Document { get; set; }
+        public SpawnDev.EBML.EBMLDocument? Document { get; set; }
         public string? ActiveContainerTypeName => ActiveContainer?.GetType().Name;
         public MasterElement? ActiveContainer { get; set; }
         public string Path => ActiveContainer?.InstancePath ?? "";
@@ -37,11 +36,11 @@ namespace BlazorEBMLViewer.Pages
         [Inject]
         AppService AppService { get; set; }
 
-        async Task RowSelect(BaseElement element)
+        async Task RowSelect(ElementBase element)
         {
             StateHasChanged();
         }
-        async Task RowDeselect(BaseElement element)
+        async Task RowDeselect(ElementBase element)
         {
             StateHasChanged();
         }
@@ -53,8 +52,8 @@ namespace BlazorEBMLViewer.Pages
             StateHasChanged();
             await Task.Delay(50);
             Document = EBMLSchemaService.Parser.CreateDocument(schema.DocType, filename);
-            Document.OnElementAdded += Document_OnElementAdded;
-            Document.OnElementRemoved += Document_OnElementRemoved;
+            //Document.OnElementAdded += Document_OnElementAdded;
+            //Document.OnElementRemoved += Document_OnElementRemoved;
             Document.OnChanged += Document_OnChanged;
             MainLayoutService.Title = Document.Filename;
             ActiveContainer = Document;
@@ -62,19 +61,19 @@ namespace BlazorEBMLViewer.Pages
             StateHasChanged();
             await SetPath(Document);
         }
-        private void Document_OnChanged(IEnumerable<BaseElement> elements)
+        private void Document_OnChanged()
         {
-            var element = elements.First();
+            //var element = elements.First();
             //Console.WriteLine($"VIEW: Document_OnChanged: {elements.Count()} {element.Depth} {element.Name} {element.Path}");
         }
-        private void Document_OnElementRemoved(MasterElement masterElement, BaseElement element)
-        {
-            //Console.WriteLine($"VIEW: Document_OnElementRemoved: {element.Depth} {element.Name} {element.Path}");
-        }
-        private void Document_OnElementAdded(MasterElement masterElement, BaseElement element)
-        {
-            //Console.WriteLine($"VIEW: Document_OnElementAdded: {element.Depth} {element.Name} {element.Path}");
-        }
+        //private void Document_OnElementRemoved(MasterElement masterElement, EBMLElement element)
+        //{
+        //    //Console.WriteLine($"VIEW: Document_OnElementRemoved: {element.Depth} {element.Name} {element.Path}");
+        //}
+        //private void Document_OnElementAdded(MasterElement masterElement, EBMLElement element)
+        //{
+        //    //Console.WriteLine($"VIEW: Document_OnElementAdded: {element.Depth} {element.Name} {element.Path}");
+        //}
         protected override void OnInitialized()
         {
             //
@@ -104,7 +103,7 @@ namespace BlazorEBMLViewer.Pages
             DocumentBusy = false;
             StateHasChanged();
         }
-        async Task SetPath(BaseElement element)
+        async Task SetPath(ElementBase element)
         {
             if (element == null) return;
             DocumentBusy = true;
@@ -136,7 +135,7 @@ namespace BlazorEBMLViewer.Pages
                 var atMaxCount = false;
                 if (addable.MaxOccurs > 0 || addable.MinOccurs > 0)
                 {
-                    var count = ActiveContainer.Data.Count(o => o.Id == addable.Id);
+                    var count = ActiveContainer.Children.Count(o => o.Id == addable.Id);
                     requiresAdd = addable.MinOccurs > 0 && count < addable.MinOccurs;
                     atMaxCount = addable.MaxOccurs > 0 && count >= addable.MaxOccurs;
                     if (requiresAdd) missing.Add(addable);
@@ -174,7 +173,7 @@ namespace BlazorEBMLViewer.Pages
                 {
                     ActiveContainer.AddElement(addable);
                 }
-                Document.EnabledDocumentEngines();
+                Document.EnableDocumentEngines();
             }
             else if (args.Value is SchemaElement addable)
             {
@@ -188,8 +187,8 @@ namespace BlazorEBMLViewer.Pages
         void CloseDocument()
         {
             if (Document == null) return;
-            Document.OnElementAdded -= Document_OnElementAdded;
-            Document.OnElementRemoved -= Document_OnElementRemoved;
+            //Document.OnElementAdded -= Document_OnElementAdded;
+            //Document.OnElementRemoved -= Document_OnElementRemoved;
             Document.OnChanged -= Document_OnChanged;
             Document = null;
             ActiveContainer = null;
@@ -315,7 +314,7 @@ namespace BlazorEBMLViewer.Pages
             {
                 await Task.Delay(50);
                 var mem = new MemoryStream();
-                Document.CopyTo(mem);
+                await Document.CopyToAsync(mem, CancellationToken.None);
                 mem.Position = 0;
                 var length = mem.Length;
                 using var tmp = new Blob(new byte[][] { mem.ToArray() });
