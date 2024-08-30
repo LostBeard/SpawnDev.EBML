@@ -45,7 +45,10 @@ newDoc.Undo();  // newDoc.Redo();
 Console.WriteLine($"DocType: 'webm' == {newDoc.DocType}");
 docTypeEl.Remove();
 Console.WriteLine($"DocType: '' == {newDoc.DocType}");
-// docTypeEl.Data is now empty
+// newDoc.DocType == null because it does not exist in the document
+// docTypeEl.Exists == false, signifying it is no longer a part of a Document, but it still has a snapshot of it's data
 newDoc.Undo();
+// restored to 'webm'
+// docTypeEl.Exists == true
 Console.WriteLine($"DocType: 'webm' == {newDoc.DocType}");
 var nmt = true;

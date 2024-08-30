@@ -54,7 +54,6 @@ namespace SpawnDev.EBML.Elements
         /// <exception cref="Exception"></exception>
         protected void ThrowIfCannotEdit()
         {
-            //if (tryUpdate) Update();
             if (!CanEdit) throw new Exception("Cannot edit element in current state");
         }
         /// <summary>
@@ -65,7 +64,7 @@ namespace SpawnDev.EBML.Elements
         {
             get
             {
-                return Stream != null && PatchId == Stream.PatchId;
+                return Stream != null && PatchId == Document.Stream.PatchId && Document.Stream.RestorePoint;
             }
         }
         /// <summary>
@@ -79,24 +78,30 @@ namespace SpawnDev.EBML.Elements
             }
         }
         /// <summary>
-        /// Returns true if this element is using data from the current primary stream patch
+        /// Returns true if this element is using data from the current primary stream patch<br/>
+        /// An element will only ever use the latest patch if it is marked as stable (a restore point)
         /// </summary>
         public bool UsingLatest
         {
             get
             {
-                return Stream == null || PatchId == Stream.PatchId;
+                return PatchId == Document.Stream.PatchId;
             }
         }
         /// <summary>
-        /// Returns true if this element is using data from the latest (relative to the current) stable stream patch
+        /// Returns true if the latest stream patch is marked as a restore point, also referred to in this library as a stable patch
+        /// </summary>
+        public bool LatestIsStable => Document.Stream.RestorePoint;
+        /// <summary>
+        /// Returns true if this element is using data from the latest (relative to the current) stable stream patch<br/>
+        /// The latest patch may not be marked as stable as modifications may be in process that would cause the stream to appear corrupted.<br/>
+        /// So elements generally only look at the latest stable stream patch
         /// </summary>
         public bool UsingLatestStable
         {
             get
             {
-                if (Info == null || Document == null || Stream == null) return true;
-                return PatchId == Stream.LatestStable.PatchId;
+                return PatchId == Document.Stream.LatestStable.PatchId;
             }
         }
         /// <summary>
@@ -115,11 +120,7 @@ namespace SpawnDev.EBML.Elements
         /// The source stream. The data in this stream may change. If it does Stream.PatchId will no longer match PatchId. UpdateNeeded will == true.<br/>
         /// StreamSnapShot will still contain the data before Stream was changed, if it is needed. Calling Update() will update this element's metadata and SnapShot
         /// </summary>
-        public virtual PatchStream Stream => Document.Stream;
-        /// <summary>
-        /// Returns the latest stable stream
-        /// </summary>
-        public virtual PatchStream LatestStable => Document.Stream.LatestStable;
+        public virtual PatchStream Stream => Document.Stream[PatchId];
         /// This element's index in its container
         /// </summary>
         public int Index => Info.Index;
@@ -169,23 +170,23 @@ namespace SpawnDev.EBML.Elements
         /// <summary>
         /// The size of this element, if specified by header
         /// </summary>
-        public ulong? Size => DocumentRoot ? (ulong)Stream.LatestStable.Length - (ulong)DocumentOffset : !Exists ? 0 : Info.Size;
+        public ulong? Size => DocumentRoot ? (ulong)Stream.LatestStable.Length - (ulong)DocumentOffset : Info.Size;
         /// <summary>
         /// The size of the element's header
         /// </summary>
-        public long HeaderSize => !Exists ? 0 : Info.HeaderSize;
+        public long HeaderSize => Info.HeaderSize;
         /// <summary>
         /// The size of this element, if specified by header, else the size of data left in the stream
         /// </summary>
-        public long MaxDataSize => DocumentRoot ? Stream.LatestStable.Length - DocumentOffset : !Exists ? 0 : Info.MaxDataSize;
+        public long MaxDataSize => DocumentRoot ? Stream.LatestStable.Length - DocumentOffset : Info.MaxDataSize;
         /// <summary>
         /// The total size of this element. Header size + data size.
         /// </summary>
-        public long MaxTotalSize => DocumentRoot ? Stream.LatestStable.Length - DocumentOffset : !Exists ? 0 : Info.MaxTotalSize;
+        public long MaxTotalSize => DocumentRoot ? Stream.LatestStable.Length - DocumentOffset : Info.MaxTotalSize;
         /// <summary>
         /// The position in the stream where this element's data starts
         /// </summary>
-        public long DataOffset => !Exists ? 0 : Info.DataOffset;
+        public long DataOffset => Info.DataOffset;
         /// <summary>
         /// The patch id of the PatchStream when this element's metadata was last updated
         /// </summary>
@@ -197,7 +198,7 @@ namespace SpawnDev.EBML.Elements
         /// <summary>
         /// Returns true if this element has an empty name and Offset == DocumentOffset
         /// </summary>
-        public bool DocumentRoot => string.IsNullOrEmpty(_Info.InstancePath) || _Info.InstancePath == "/";
+        public bool DocumentRoot => this is Document;
         /// <summary>
         /// The number of elements if this elements path - 1
         /// </summary>
@@ -232,20 +233,14 @@ namespace SpawnDev.EBML.Elements
         }
 
         /// <summary>
-        /// Removes the element from the stream
+        /// Removes the element from the Document<br/>
+        /// The Element.Exists
         /// </summary>
         /// <returns></returns>
         public bool Remove()
         {
             ThrowIfCannotEdit();
-            //Document.Remove()
             if (!Exists || Size == null) return false;
-            //Stream.Position = Offset;
-            //var headerSize = HeaderSize;
-            //var elementSize = MaxTotalSize;
-            //Stream.Delete(elementSize);
-            //// notify parent so it can adjust the size value in its header
-            //// newDataSize = -1 to signify deletion
             DataChanged(this, -1);
             return true;
         }
@@ -300,7 +295,7 @@ namespace SpawnDev.EBML.Elements
         /// <returns></returns>
         public PatchStream ElementStreamSlice()
         {
-            return Stream.LatestStable.Slice(Offset, MaxTotalSize);
+            return Stream.Slice(Offset, MaxTotalSize);
         }
         /// <summary>
         /// Returns the element data as a PatchStream
@@ -308,7 +303,7 @@ namespace SpawnDev.EBML.Elements
         /// <returns></returns>
         public PatchStream ElementStreamDataSlice()
         {
-            return Stream.LatestStable.Slice(DataOffset, MaxDataSize);
+            return Stream.Slice(DataOffset, MaxDataSize);
         }
         /// <summary>
         /// Replace this element's data with the specified stream

@@ -9,8 +9,8 @@ namespace SpawnDev.EBML.Elements
         {
             get
             {
-                Stream.LatestStable.Position = DataOffset;
-                return IsUTF8 ? Stream.LatestStable.ReadEBMLStringUTF8((int)Size!.Value) : Stream.LatestStable.ReadEBMLStringASCII((int)Size!.Value);
+                Stream.Position = DataOffset;
+                return IsUTF8 ? Stream.ReadEBMLStringUTF8((int)Size!.Value) : Stream.ReadEBMLStringASCII((int)Size!.Value);
             }
             set
             {

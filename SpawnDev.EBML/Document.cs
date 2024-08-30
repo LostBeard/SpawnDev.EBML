@@ -353,8 +353,11 @@ namespace SpawnDev.EBML
         public override string? DocType
         {
             get => ReadString("/EBML,0/DocType,0");
-            set => WriteString("/EBML/DocType", value ?? "");
+            set => WriteString("/EBML,0/DocType,0", value ?? "");
         }
+        /// <summary>
+        /// Cached doctype value
+        /// </summary>
         string _DocType = "";
         bool SkipUnneededData = true;
         public override IEnumerable<ElementStreamInfo> FindInfo(string path) => FindInfo(path, false);

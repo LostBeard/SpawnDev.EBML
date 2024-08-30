@@ -9,8 +9,8 @@ namespace SpawnDev.EBML.Elements
             get
             {
                 if (!Exists) return default;
-                Stream.LatestStable.Position = DataOffset;
-                return Stream.LatestStable.ReadEBMLDate((int)MaxDataSize);
+                Stream.Position = DataOffset;
+                return Stream.ReadEBMLDate((int)MaxDataSize);
             }
             set
             {

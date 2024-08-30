@@ -8,8 +8,8 @@ namespace SpawnDev.EBML.Elements
         {
             get
             {
-                Stream.LatestStable.Position = DataOffset;
-                return Stream.LatestStable.ReadEBMLFloat((int)MaxDataSize);
+                Stream.Position = DataOffset;
+                return Stream.ReadEBMLFloat((int)MaxDataSize);
             }
             set
             {
