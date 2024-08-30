@@ -347,22 +347,13 @@ namespace SpawnDev.EBML
                 if (engine is IDisposable disposable) disposable.Dispose();
             }
         }
-        public string DocType
+        /// <summary>
+        /// Returns the current DocType or null if it is does not exist
+        /// </summary>
+        public string? DocType
         {
-            get
-            {
-                //if (Info.PatchId != Stream.LatestStable.PatchId)
-                //{
-                //    //Info.PatchId = Stream.LatestStable.PatchId;
-                //    _DocType = ReadString("/EBML,0/DocType,0") ?? "";
-                //}
-                return ReadString("/EBML,0/DocType,0");
-            }
-            set
-            {
-                WriteString("/EBML/DocType", value);
-                //_DocType = value;
-            }
+            get => ReadString("/EBML,0/DocType,0");
+            set => WriteString("/EBML/DocType", value ?? "");
         }
         string _DocType = "";
         bool SkipUnneededData = true;
