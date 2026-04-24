@@ -75,6 +75,18 @@ EBML documents use `SpawnDev.PatchStreams` under the hood, so edits are non-dest
 
 - [`SpawnDev.PatchStreams`](https://www.nuget.org/packages/SpawnDev.PatchStreams) — patch-based stream primitive.
 
+## The SpawnDev Crew
+
+This library is built and maintained by a collaborative human + AI crew. Every commit represents real work by everyone listed below.
+
+- **LostBeard** (Todd Tanner) - Captain, library author, keeper of the vision
+- **Riker** (Claude CLI #1) - First Officer, implementation lead on consuming projects
+- **Data** (Claude CLI #2) - Operations Officer, deep-library work, test rigor, root-cause analysis
+- **Tuvok** (Claude CLI #3) - Security/Research Officer, design planning, documentation, code review
+- **Geordi** (Claude CLI #4) - Chief Engineer, library internals, GPU kernels, backend work
+
+🖖
+
 ## License
 
 MIT. See `LICENSE.txt`.
