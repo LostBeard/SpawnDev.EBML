@@ -110,17 +110,40 @@ namespace SpawnDev.EBML.Elements
         //}
         //public ElementStreamInfo() { }
         /// <summary>
-        /// Element's parent's instance path
+        /// Element's parent's instance path.
+        /// If set directly, the stored value is returned; otherwise it falls
+        /// back to walking the Parent chain.
         /// </summary>
-        public string? ParentInstancePath => Parent?.InstancePath;
+        public string? ParentInstancePath
+        {
+            get => _ParentInstancePath ?? Parent?.InstancePath;
+            set => _ParentInstancePath = value;
+        }
+        private string? _ParentInstancePath;
         /// <summary>
-        /// Element's path
+        /// Element's path.
+        /// If set directly, the stored value is returned; otherwise it falls
+        /// back to walking the Parent chain.
         /// </summary>
-        public string Path => Parent != null ? $"{Parent.Path}/{Name}" : Name;
+        public string Path
+        {
+            get => _Path ?? (Parent != null ? $"{Parent.Path}/{Name}" : Name);
+            set => _Path = value;
+        }
+        private string? _Path;
         /// <summary>
-        /// Element's instance path
+        /// Element's instance path.
+        /// The iterator assigns this directly when producing an element;
+        /// if unset, it falls back to walking the Parent chain so externally
+        /// constructed instances without a parent still expose a usable
+        /// InstancePath (= InstanceName).
         /// </summary>
-        public string InstancePath => Parent != null ? $"{Parent.InstancePath}/{InstanceName}" : InstanceName;
+        public string InstancePath
+        {
+            get => _InstancePath ?? (Parent != null ? $"{Parent.InstancePath}/{InstanceName}" : InstanceName);
+            set => _InstancePath = value;
+        }
+        private string? _InstancePath;
         /// <summary>
         /// True if this element is a document
         /// </summary>

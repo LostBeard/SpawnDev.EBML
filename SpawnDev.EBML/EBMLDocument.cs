@@ -603,15 +603,22 @@ namespace SpawnDev.EBML
                     elementStreamInfo.Name = elementName;
                     elementStreamInfo.SchemaElement = schemaElement;
                     elementStreamInfo.Index = parent.ChildCount - 1;
-                    //elementStreamInfo.Path = elementPath;
-                    //elementStreamInfo.InstancePath = elementInstancePath;
+                    // Assign the full-chain paths explicitly so downstream
+                    // consumers can call relative Find / Children on the
+                    // returned element. Without these direct assignments,
+                    // the computed properties only see a null Parent (the
+                    // iterator doesn't link child ESIs to their parent ESI)
+                    // and produce just the last segment, breaking nested
+                    // navigation.
+                    elementStreamInfo.Path = elementPath;
+                    elementStreamInfo.InstancePath = elementInstancePath;
+                    elementStreamInfo.ParentInstancePath = elementParentInstancePath;
                     elementStreamInfo.Size = size;
                     elementStreamInfo.TypeIndex = elementTypeIndex;
                     elementStreamInfo.DataOffset = dataPosition;
                     elementStreamInfo.DataSize = maxDataSize;
                     elementStreamInfo.TotalSize = maxDataSize + headerSize;
                     elementStreamInfo.HeaderSize = headerSize;
-                    //elementStreamInfo.ParentInstancePath = elementParentInstancePath;
                     elementStreamInfo.Depth = elementDepth;
                     //elementStreamInfo.DocumentOffset = documentOffset;
                     elementStreamInfo.Exists = true;
