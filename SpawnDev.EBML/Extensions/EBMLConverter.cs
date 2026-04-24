@@ -180,7 +180,30 @@ namespace SpawnDev.EBML.Extensions
         public static byte[] ToIntBytes(long value, int minOctets = 0)
         {
             var bytes = BigEndian.GetBytes(value).ToList();
-            while (bytes.Count > 1 && bytes[0] == 0 && (minOctets <= 0 || bytes.Count > minOctets)) bytes.RemoveAt(0);
+            // Two's-complement minimisation: drop leading sign-extension bytes.
+            //   - If value is non-negative (top bit of second byte is 0), strip 0x00
+            //     bytes from the front.
+            //   - If value is negative (top bit of second byte is 1), strip 0xFF
+            //     bytes from the front.
+            // Always keep at least 1 byte AND never strip past minOctets.
+            while (bytes.Count > 1 && (minOctets <= 0 || bytes.Count > minOctets))
+            {
+                byte first = bytes[0];
+                byte next = bytes[1];
+                bool nextSign = (next & 0x80) != 0;
+                if (first == 0x00 && !nextSign)
+                {
+                    bytes.RemoveAt(0);
+                }
+                else if (first == 0xFF && nextSign)
+                {
+                    bytes.RemoveAt(0);
+                }
+                else
+                {
+                    break;
+                }
+            }
             return bytes.ToArray();
         }
         public static byte[] ToFloatBytes(double value)
