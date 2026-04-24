@@ -1,0 +1,44 @@
+﻿@using SpawnDev.BlazorJS.Toolbox
+@using SpawnDev.EBML.ElementTypes
+@using SpawnDev.EBML.Elements
+
+<span>@Element.DataString</span>
+<RadzenIcon Icon="@VerifyIcon" />
+<RadzenButton Click="Update" Icon="refresh" title="Update" ButtonStyle="ButtonStyle.Dark" Size="ButtonSize.Small" />
+
+@code {
+    [Parameter]
+    public CRC32Element Element { get; set; }
+
+    [Parameter]
+    public EventCallback OnChanged { get; set; }
+
+    [Inject]
+    DialogService DialogService { get; set; }
+
+    int VerificationState = 0;
+
+    protected override void OnInitialized()
+    {
+        //VerificationState = Element.VerifyCRC() ? 1 : -1;
+    }
+
+    string VerifyIcon => VerificationState switch
+    {
+        -1 => "warning",
+        1 => "check",
+        _ => "question_mark",
+    };
+
+    async Task Update(MouseEventArgs args)
+    {
+        if (Element == null) return;
+        Element.UpdateCRC();
+        VerificationState = 1;
+    }
+    async Task Verify(MouseEventArgs args)
+    {
+        if (Element == null) return;
+        VerificationState = Element.VerifyCRC() ? 1 : -1;
+    }
+}

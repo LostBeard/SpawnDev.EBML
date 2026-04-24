@@ -5,8 +5,15 @@ namespace SpawnDev.EBML.Elements
     /// <summary>
     /// Basic read all, write all binary element<br/>
     /// </summary>
-    public class BinaryElement : ElementBase
+    public class BinaryElement : BaseElement
     {
+        protected override string DataToDataString()
+        {
+            var chunkSize = DataSize <= 8 ? DataSize : 8;
+            var chunk = new byte[chunkSize];
+            _ = Stream.Read(chunk);
+            return DataSize <= 8 ? "0x" + Convert.ToHexString(chunk) : "0x" + Convert.ToHexString(chunk) + "...";
+        }
         /// <summary>
         /// The element type name
         /// </summary>
@@ -17,17 +24,21 @@ namespace SpawnDev.EBML.Elements
         /// </summary>
         public PatchStream Data
         {
-            get => ElementStreamDataSlice();
+            get => ElementToDataSlice();
             set
             {
                 // Out of sync element values cannot be set
                 ReplaceData(value);
             }
         }
+        VolatileData<string> _DataString;
         /// <summary>
         /// New instance
         /// </summary>
         /// <param name="element"></param>
-        public BinaryElement(EBMLDocument document, ElementStreamInfo element) : base(document, element) { }
+        public BinaryElement(EBMLDocument document, ElementStreamInfo element) : base(document, element)
+        {
+
+        }
     }
 }

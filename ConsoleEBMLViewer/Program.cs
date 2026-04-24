@@ -3,13 +3,18 @@ using SpawnDev.EBML.Elements;
 using SpawnDev.EBML.ElementTypes;
 using SpawnDev.EBML.Matroska;
 
-var bigFile = @"k:\Video\Alita Battle Angel.mkv";
-var file1 = @"TestData/Big_Buck_Bunny_180 10s.webm";
-var file2 = @"k:\Video\matroska_audio_test.mka";
+//var bigFile = @"k:\Video\Alita Battle Angel.mkv";
+//var file1 = @"TestData/Big_Buck_Bunny_180 10s.webm";
+//var file2 = @"k:\Video\matroska_audio_test.mka";
 
-// input stream
-using var fileStreamIn = File.Open(bigFile, new FileStreamOptions { Options = FileOptions.Asynchronous, Mode = FileMode.Open, Access = FileAccess.Read, Share = FileShare.Read });
-var existingDoc = new EBMLDocument(fileStreamIn);
+//// input stream
+//using var fileStreamIn = File.Open(bigFile, new FileStreamOptions { Options = FileOptions.Asynchronous, Mode = FileMode.Open, Access = FileAccess.Read, Share = FileShare.Read });
+//var existingDoc = new EBMLDocument(fileStreamIn);
+
+
+//var track1 = existingDoc.FindMaster("/Segment,0/Tracks,0");
+//track1!.AddCRC32();
+
 
 //var info = existingDoc.Find("/Segment/").ToList();
 //var info1 = existingDoc.Find("/Segment/").ToList();
@@ -18,10 +23,24 @@ var existingDoc = new EBMLDocument(fileStreamIn);
 //var els2 = await existingDoc.FindAsync("/Segment/", CancellationToken.None).ToListAsync();
 
 var newDoc = new EBMLDocument("webm");
-Console.WriteLine($"DocType: 'webm' == {newDoc.DocType}");
+
+var segment = newDoc.Add<Segment>();
+
+
+//var segment = new Segment();
+//segment.Add(new Cluster());
+//segment.Add<Cluster>();
+
+
+var v0 = newDoc.Add("Void");
+var v1 = newDoc.Add("Void");
+v1.Remove();
+var nn = v1.DataString;
 
 Console.WriteLine($"DocType: 'webm' == {newDoc.DocType}");
-var segment = newDoc.Add<Segment>();
+
+//Console.WriteLine($"DocType: 'webm' == {newDoc.DocType}");
+//var segment = newDoc.Add<Segment>();
 var cluster = segment.Add<Cluster>();
 // Adds an auto updating CRC-32 element to /Segement,0
 segment.AddCRC32();

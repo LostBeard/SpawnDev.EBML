@@ -10,7 +10,7 @@ namespace SpawnDev.EBML.Engines
     {
         public EBMLEngine(EBMLDocument document) : base(document) { }
 
-        public override void DocumentCheck(List<ElementBase> changedElements)
+        public override void DocumentCheck(List<BaseElement> changedElements)
         {
             if (changedElements.Count > 0)
             {

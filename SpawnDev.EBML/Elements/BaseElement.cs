@@ -2,6 +2,7 @@
 using SpawnDev.EBML.Extensions;
 using SpawnDev.EBML.Schemas;
 using SpawnDev.PatchStreams;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace SpawnDev.EBML.Elements
@@ -9,7 +10,7 @@ namespace SpawnDev.EBML.Elements
     /// <summary>
     /// An EBML element
     /// </summary>
-    public class ElementBase
+    public class BaseElement
     {
         /// <summary>
         /// Instance stream info
@@ -18,12 +19,13 @@ namespace SpawnDev.EBML.Elements
         {
             get
             {
-                if (!DocumentRoot)
+                if (!DocumentRoot && _Info.PatchId != Document.Stream.LatestStable.PatchId && _PatchIdLastUpdated != Document.Stream.LatestStable.PatchId)
                 {
+                    _PatchIdLastUpdated = Document.Stream.LatestStable.PatchId;
                     var info = Document.FindInfo(_Info.InstancePath).FirstOrDefault();
                     if (info != null)
                     {
-                        _Info.Exists = true;    
+                        _Info.Exists = true;
                         if (_Info != info) _Info = info;
                     }
                     else
@@ -35,6 +37,8 @@ namespace SpawnDev.EBML.Elements
             }
             protected set => _Info = value;
         }
+        // used when does not exist
+        string _PatchIdLastUpdated = "";
         /// <summary>
         /// Recast this element to another Element type<br/>
         /// IF this element is already assignable to TElement, this element is returned<br/>
@@ -42,7 +46,7 @@ namespace SpawnDev.EBML.Elements
         /// </summary>
         /// <typeparam name="TElement">Element type to return</typeparam>
         /// <returns></returns>
-        public TElement As<TElement>() where TElement : ElementBase
+        public TElement As<TElement>() where TElement : BaseElement
         {
             if (this is TElement element) return (TElement)element;
             var ret = (TElement)Activator.CreateInstance(typeof(TElement), Document, Info)!;
@@ -52,19 +56,19 @@ namespace SpawnDev.EBML.Elements
         /// Throws an exception if can edit returns false
         /// </summary>
         /// <exception cref="Exception"></exception>
-        protected void ThrowIfCannotEdit()
+        protected void ThrowIfCannotEditData()
         {
-            if (!CanEdit) throw new Exception("Cannot edit element in current state");
+            if (!CanEditData) throw new Exception("Cannot edit element in current state");
         }
         /// <summary>
         /// Returns true if the current element stream info is update to date with the document primary stream<br/>
         /// If true, this element's data is available for editing
         /// </summary>
-        public bool CanEdit
+        public bool CanEditData
         {
             get
             {
-                return Stream != null && PatchId == Document.Stream.PatchId && Document.Stream.RestorePoint;
+                return DocumentStream.RestorePoint;
             }
         }
         /// <summary>
@@ -91,7 +95,7 @@ namespace SpawnDev.EBML.Elements
         /// <summary>
         /// Returns true if the latest stream patch is marked as a restore point, also referred to in this library as a stable patch
         /// </summary>
-        public bool LatestIsStable => Document.Stream.RestorePoint;
+        public bool LatestIsStable => Document?.Stream.RestorePoint ?? false;
         /// <summary>
         /// Returns true if this element is using data from the latest (relative to the current) stable stream patch<br/>
         /// The latest patch may not be marked as stable as modifications may be in process that would cause the stream to appear corrupted.<br/>
@@ -101,17 +105,13 @@ namespace SpawnDev.EBML.Elements
         {
             get
             {
-                return PatchId == Document.Stream.LatestStable.PatchId;
+                return PatchId == Document?.Stream?.LatestStable?.PatchId;
             }
         }
         /// <summary>
         /// Returns true if updating elements stream info
         /// </summary>
         public bool Updating { get; protected set; } = false;
-        /// <summary>
-        /// The Document this element belong(s|ed) to
-        /// </summary>
-        public virtual EBMLDocument Document { get; protected set; }
         /// <summary>
         /// EBML schema parser
         /// </summary>
@@ -120,7 +120,16 @@ namespace SpawnDev.EBML.Elements
         /// The source stream. The data in this stream may change. If it does Stream.PatchId will no longer match PatchId. UpdateNeeded will == true.<br/>
         /// StreamSnapShot will still contain the data before Stream was changed, if it is needed. Calling Update() will update this element's metadata and SnapShot
         /// </summary>
-        public virtual PatchStream Stream => Document.Stream[PatchId];
+        public virtual PatchStream Stream => Info.Stream;
+        /// <summary>
+        /// The live stream<br/>
+        /// </summary>
+        public virtual PatchStream DocumentStream => Document.Stream;
+        /// <summary>
+        /// Return true if the SnapShot is viewing the same data and the LiveStream
+        /// </summary>
+        public bool SnapShotIsCurrent => Stream.PatchId == DocumentStream.PatchId;
+        /// <summary>
         /// This element's index in its container
         /// </summary>
         public int Index => Info.Index;
@@ -153,12 +162,13 @@ namespace SpawnDev.EBML.Elements
         /// </summary>
         public SchemaElement? SchemaElement => Info.SchemaElement;
         /// <summary>
-        /// Returns true is a snap shot will be used for reads. Update() to resync.
+        /// The Document this element belong(s|ed) to
         /// </summary>
+        public EBMLDocument? Document { get; protected set; }
         /// <summary>
         /// The position in the stream where the EBML document containing this element starts
         /// </summary>
-        public virtual long DocumentOffset => Info.DocumentOffset;
+        public virtual long DocumentOffset => Info.RootOffset;
         /// <summary>
         /// The position in the stream of this element
         /// </summary>
@@ -190,7 +200,7 @@ namespace SpawnDev.EBML.Elements
         /// <summary>
         /// The patch id of the PatchStream when this element's metadata was last updated
         /// </summary>
-        public string PatchId => Info.PatchId;
+        public string PatchId => _Info.PatchId;
         /// <summary>
         /// Returns true if this element's InstancePath is still found in the containing EBML document or if this element is an EBML document master element<br/>
         /// </summary>
@@ -215,21 +225,36 @@ namespace SpawnDev.EBML.Elements
         /// <summary>
         /// Creates a new instance
         /// </summary>
+        /// <param name="document"></param>
         /// <param name="element"></param>
-        public ElementBase(EBMLDocument document, ElementStreamInfo element)
+        public BaseElement(EBMLDocument document, ElementStreamInfo element)
         {
             //Console.WriteLine($"** {GetType().Name}");
+            if (document == null) throw new ArgumentNullException(nameof(document));
             if (element == null) throw new ArgumentNullException(nameof(element));
             Document = document;
             Info = element;
         }
-        public static bool Verbose { get; set; } = false;
+        public static bool Verbose { get; set; } = true;
         /// <summary>
         /// Constructor for derived classes
         /// </summary>
-        protected ElementBase()
+        protected BaseElement()
         {
             //Console.WriteLine($"** {GetType().Name}");
+
+        }
+        protected BaseElement(PatchStream patchStream, long dataOffset, long dataSize)
+        {
+            //Console.WriteLine($"** {GetType().Name}");
+            Info = new ElementStreamInfo { 
+             Stream = Stream.LatestStable,
+              DataOffset = 0,
+              DataSize = 0,
+
+            };
+            Info.Stream = new PatchStream();
+
         }
 
         /// <summary>
@@ -239,7 +264,7 @@ namespace SpawnDev.EBML.Elements
         /// <returns></returns>
         public bool Remove()
         {
-            ThrowIfCannotEdit();
+            ThrowIfCannotEditData();
             if (!Exists || Size == null) return false;
             DataChanged(this, -1);
             return true;
@@ -281,9 +306,11 @@ namespace SpawnDev.EBML.Elements
         /// </summary>
         /// <param name="changedElement">The element that is calling the event</param>
         /// <param name="newDataSize">The number of bytes added or removed from this element's data. May be 0, but this needs to be called if the element's data has changed</param>
-        protected internal virtual void DataChanged(ElementBase changedElement, long newDataSize)
+        protected internal virtual void DataChanged(BaseElement changedElement, long newDataSize)
         {
+            Console.WriteLine($">>> DataChanged: {InstancePath}");
             Document.DataChanged(changedElement, newDataSize);
+            Console.WriteLine($"<<< DataChanged: {InstancePath}");
         }
         /// <summary>
         /// Returns the DocType
@@ -293,23 +320,45 @@ namespace SpawnDev.EBML.Elements
         /// Returns the entire element, header and data, as a PatchStream
         /// </summary>
         /// <returns></returns>
-        public PatchStream ElementStreamSlice()
+        public PatchStream ElementToSlice()
         {
             return Stream.Slice(Offset, TotalSize);
+        }
+        /// <summary>
+        /// Returns the element's data as a byte array. The header is not included.<br/>
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        public byte[] ElementDataToBytes()
+        {
+            var bytes = new byte[DataSize];
+            var bytesRead = Stream.Read(bytes, 0, bytes.Length);
+            if (bytesRead != DataSize) throw new Exception("Failed to read data");
+            return bytes;
         }
         /// <summary>
         /// Returns the element data as a PatchStream
         /// </summary>
         /// <returns></returns>
-        public PatchStream ElementStreamDataSlice()
+        public PatchStream ElementToDataSlice()
         {
             return Stream.Slice(DataOffset, DataSize);
         }
+        /// <summary>
+        /// Copies the entire element to the specified stream
+        /// </summary>
+        /// <param name="stream"></param>
         public virtual void CopyTo(Stream stream)
         {
             Stream.Position = Offset;
             Stream.CopyTo(stream, (int)TotalSize);
         }
+        /// <summary>
+        /// Copies the entire element to the specified stream
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public virtual async Task CopyToAsync(Stream stream, CancellationToken cancellationToken)
         {
             Stream.Position = Offset;
@@ -330,16 +379,26 @@ namespace SpawnDev.EBML.Elements
         /// <summary>
         /// A string that represents this element
         /// </summary>
-        public virtual string DataString
+        public string DataString
         {
             get
             {
-                return $"{InstancePath}";
+                if (_dataStringPID == Stream.PatchId) return _dataString;
+                _dataString = DataToDataString();
+                _dataStringPID = Stream.PatchId;
+                return _dataString;
             }
-            set
-            {
+            set => DataFromDataString(value);
+        }
+        string _dataString = "";
+        string _dataStringPID = "";
+        protected virtual string DataToDataString()
+        {
+            return $"{InstancePath}";
+        }
+        protected virtual void DataFromDataString(string value)
+        {
 
-            }
         }
         /// <summary>
         /// Replace this element's data with the specified stream
@@ -347,7 +406,32 @@ namespace SpawnDev.EBML.Elements
         /// <param name="replacementData"></param>
         public void ReplaceData(Stream replacementData)
         {
-            ThrowIfCannotEdit();
+            // not attached to document
+            // 
+            // the data did originally come from the document
+            var fromDocument = Stream.SourceId == Document.Stream.Id;
+            var attached = Exists;
+            if (!fromDocument)
+            {
+                // we can edit the data in snapshot directly
+
+            }
+            else
+            {
+                if (attached)
+                {
+                    // need to edit document
+
+                }
+                else
+                {
+                    // need to create a new document-free snapshot source we can edit
+
+
+                }
+            }
+            ThrowIfCannotEditData();
+            Console.WriteLine($"ReplaceData: {InstancePath}");
             Stream.Position = DataOffset;
             Stream.Insert(replacementData, DataSize);
             DataChanged(this, replacementData.Length);
@@ -358,26 +442,26 @@ namespace SpawnDev.EBML.Elements
         /// </summary>
         public void DeleteData()
         {
-            ThrowIfCannotEdit();
+            ThrowIfCannotEditData();
             Stream.Position = DataOffset;
             Stream.Delete(DataSize);
             DataChanged(this, 0);
         }
         #region Equals
-        public static bool operator ==(ElementBase? b1, ElementBase? b2)
+        public static bool operator ==(BaseElement? b1, BaseElement? b2)
         {
             if ((object?)b1 == null) return (object?)b2 == null;
             return b1.Equals(b2);
         }
 
-        public static bool operator !=(ElementBase? b1, ElementBase? b2)
+        public static bool operator !=(BaseElement? b1, BaseElement? b2)
         {
             return !(b1 == b2);
         }
 
         public override bool Equals(object? obj)
         {
-            if (obj == null || !(obj is ElementBase element)) return false;
+            if (obj == null || !(obj is BaseElement element)) return false;
             // if the instance path is different or the Document is different ? false
             if (InstancePath != element.InstancePath || !object.ReferenceEquals(Document, element.Document)) return false;
             return true;

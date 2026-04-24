@@ -2,7 +2,7 @@
 
 namespace SpawnDev.EBML.ElementTypes
 {
-    public class UnknownElement : ElementBase
+    public class UnknownElement : BaseElement
     {
         /// <summary>
         /// New instance

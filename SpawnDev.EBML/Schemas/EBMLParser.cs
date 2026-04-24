@@ -15,7 +15,11 @@ namespace SpawnDev.EBML.Schemas
         /// <summary>
         /// EBML string "ebml"
         /// </summary>
-        public const string EBML = "ebml";
+        public const string EBMLSchemaName = "ebml";
+
+        public const string EBMLElementName = "EBML";
+
+        public const string EBMLElementId = "0x1A45DFA3";
         /// <summary>
         /// Allowed path delimiters
         /// </summary>
@@ -48,8 +52,8 @@ namespace SpawnDev.EBML.Schemas
             if (defaultConfig)
             {
                 LoadDefaultSchemas();
-                RegisterDocumentEngine<EBMLEngine>();
-                RegisterDocumentEngine<MatroskaEngine>();
+                //RegisterDocumentEngine<EBMLEngine>();
+                //RegisterDocumentEngine<MatroskaEngine>();
                 // Add default types to use based on DocType
                 // Elements can also be cast to other Element types using Element.As<TElement>()
                 DocumentElementTypes.Add("ebml", new Dictionary<string, Type>
@@ -153,32 +157,18 @@ namespace SpawnDev.EBML.Schemas
         /// <typeparam name="TElement"></typeparam>
         /// <param name="docType"></param>
         /// <returns></returns>
-        public string? GetElementNameFromType<TElement>(string docType) where TElement : ElementBase
+        public static string? GetElementNameFromType<TElement>() where TElement : BaseElement
         {
             var typeT = typeof(TElement);
-            var typeName = typeT.Name;
-            if (!string.IsNullOrEmpty(docType) && GetElement(typeName, docType) != null)
-            {
-                return typeName;
-            }
-            if (!string.IsNullOrEmpty(docType) && DocumentElementTypes.TryGetValue(docType, out var elementTypes))
-            {
-                var kvp = elementTypes.Where(o => o.Value == typeT).Select(o => o.Key).FirstOrDefault();
-                if (!string.IsNullOrEmpty(kvp)) return kvp;
-            }
-            if (docType != EBML && DocumentElementTypes.TryGetValue(EBML, out var ebmlTypes))
-            {
-                var kvp = ebmlTypes.Where(o => o.Value == typeT).Select(o => o.Key).FirstOrDefault();
-                if (!string.IsNullOrEmpty(kvp)) return kvp;
-            }
-            var elementNameAttributes = typeT.GetCustomAttributes<ElementNameAttribute>().ToList();
-            if (elementNameAttributes.Count == 1) return elementNameAttributes.First().Name;
-            var elementNameAttribute = elementNameAttributes.FirstOrDefault(o => o.DocType == docType);
-            if (elementNameAttribute != null) return elementNameAttribute.Name;
-            var elementNameAttribute1 = elementNameAttributes.FirstOrDefault(o => o.DocType == EBML);
-            if (elementNameAttribute1 != null) return elementNameAttribute1.Name;
-            return null;
+            var elementNameAttribute = typeT.GetCustomAttribute<ElementNameAttribute>();
+            return elementNameAttribute?.Name ?? typeT.Name;
         }
+        //public static ulong GetElementIdFromType<TElement>() where TElement : BaseElement
+        //{
+        //    var typeT = typeof(TElement);
+        //    var elementNameAttribute = typeT.GetCustomAttribute<ElementIdAttribute>();
+        //    return elementNameAttribute?.Id ?? 0;
+        //}
         /// <summary>
         /// Returns a docType specific Element Type if found, otherwise returns the default type for that element.<br/>
         /// elementType:<br/>
@@ -203,7 +193,7 @@ namespace SpawnDev.EBML.Schemas
                 {
                     return type!;
                 }
-                if (docType != EBML && DocumentElementTypes.TryGetValue(EBML, out var ebmlTypes) && ebmlTypes.TryGetValue(elementName, out var ebmlType))
+                if (docType != EBMLSchemaName && DocumentElementTypes.TryGetValue(EBMLSchemaName, out var ebmlTypes) && ebmlTypes.TryGetValue(elementName, out var ebmlType))
                 {
                     return ebmlType!;
                 }
@@ -227,9 +217,9 @@ namespace SpawnDev.EBML.Schemas
         /// </summary>
         /// <param name="docType"></param>
         /// <returns></returns>
-        public Dictionary<ulong, SchemaElement> GetElements(string? docType = EBML)
+        public Dictionary<ulong, SchemaElement> GetElements(string? docType = EBMLSchemaName)
         {
-            var ret = docType != EBML && Schemas.TryGetValue(EBML, out var ebmlSchema) ? new Dictionary<ulong, SchemaElement>(ebmlSchema.Elements) : new Dictionary<ulong, SchemaElement>();
+            var ret = docType != EBMLSchemaName && Schemas.TryGetValue(EBMLSchemaName, out var ebmlSchema) ? new Dictionary<ulong, SchemaElement>(ebmlSchema.Elements) : new Dictionary<ulong, SchemaElement>();
             if (!string.IsNullOrEmpty(docType) && Schemas.TryGetValue(docType, out var schema))
             {
                 foreach (var kvp in schema.Elements)
@@ -245,10 +235,10 @@ namespace SpawnDev.EBML.Schemas
         /// <param name="id"></param>
         /// <param name="docType"></param>
         /// <returns></returns>
-        public SchemaElement? GetElement(ulong id, string? docType = EBML)
+        public SchemaElement? GetElement(ulong id, string? docType = EBMLSchemaName)
         {
             if (!string.IsNullOrEmpty(docType) && Schemas.TryGetValue(docType, out var schema) && schema.Elements.TryGetValue(id, out var element)) return element;
-            return docType != EBML ? GetElement(id) : null;
+            return docType != EBMLSchemaName ? GetElement(id) : null;
         }
         /// <summary>
         /// Returns the schema for the given element name
@@ -256,14 +246,14 @@ namespace SpawnDev.EBML.Schemas
         /// <param name="name"></param>
         /// <param name="docType"></param>
         /// <returns></returns>
-        public SchemaElement? GetElement(string name, string? docType = EBML)
+        public SchemaElement? GetElement(string name, string? docType = EBMLSchemaName)
         {
             if (!string.IsNullOrEmpty(docType) && Schemas.TryGetValue(docType, out var schema))
             {
                 var tmp = schema.Elements.Values.FirstOrDefault(o => o.Name == name);
                 if (tmp != null) return tmp;
             }
-            return docType != EBML ? GetElement(name) : null;
+            return docType != EBMLSchemaName ? GetElement(name) : null;
         }
         /// <summary>
         /// Returns true if the MasterElement can contain the schema element

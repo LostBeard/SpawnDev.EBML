@@ -2,7 +2,7 @@
 
 namespace SpawnDev.EBML.ElementTypes
 {
-    [ElementName("ebml", "Void")]
+    [ElementName("Void")]
     public class VoidElement : BinaryElement
     {
         /// <summary>

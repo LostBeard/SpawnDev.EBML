@@ -14,16 +14,15 @@ namespace SpawnDev.EBML
     {
         Dictionary<string, MasterCacheItem> MasterCache = new Dictionary<string, MasterCacheItem>();
         private EBMLParser _Parser { get; set; }
-        private PatchStream _Stream { get; set; }
+        /// <summary>
+        /// The underlying PatchStream
+        /// </summary>
+        //public PatchStream Stream { get; private set; }
         /// <summary>
         /// EBML Parser<br/>
         /// May be shared between Documents
         /// </summary>
         public override EBMLParser Parser => _Parser;
-        /// <summary>
-        /// The underlying PatchStream
-        /// </summary>
-        public override PatchStream Stream => _Stream;
         /// <summary>
         /// Get or set the Filename. Used for informational purposes only.
         /// </summary>
@@ -36,7 +35,7 @@ namespace SpawnDev.EBML
         /// Returns the EBML body or null if not found<br/>
         /// EBML body refers to the first element that is not the EBML element, usually right after the EBML element
         /// </summary>
-        public IEnumerable<ElementBase> Body => Children.Skip(1);
+        public IEnumerable<BaseElement> Body => Children.Skip(1);
         /// <summary>
         /// 
         /// </summary>
@@ -57,21 +56,27 @@ namespace SpawnDev.EBML
         {
             if (filename != null) Filename = filename;
             parser ??= new EBMLParser();
-            Info.Path = "/";
-            Info.InstancePath = "/";
+            //Info.Path = "";
+            //Info.InstancePath = ",0";
             Info.Id = 0;
             Info.Depth = -1;
-            Info.DocumentOffset = 0;
+            Info.Offset = 0;
             Info.Exists = true;
             _Parser = parser;
             Document = this;
             // once Stream is set, Elements will stay up to date with stream changes, automatically
             // switching to the most recent (to the current patch level) stable stream version
-            _Stream = new PatchStream(new MemoryStream());
-            _Stream.OnChanged += _Stream_OnChanged;
-            _Stream.OnRestorePointsChanged += _Stream_OnRestorePointsChanged;
             LoadEngines();
+            Info.Stream = new PatchStream(new MemoryStream());
+            // Keep a permanent reference to the LIVE PatchStream. FindInfo may
+            // reassign Info.Stream to a stable snapshot for reads, but LatestStable
+            // checks MUST always go against the live stream - otherwise a snapshot
+            // taken mid-edit (before the new patch is marked RestorePoint) becomes
+            // a permanent dead end and the document never sees later restore points.
+            _LiveStream = Info.Stream;
             Stream.RestorePoint = true;
+            Stream.OnChanged += _Stream_OnChanged;
+            Stream.OnRestorePointsChanged += _Stream_OnRestorePointsChanged;
             if (!string.IsNullOrEmpty(docType))
             {
                 CreateDocument(docType);
@@ -79,26 +84,37 @@ namespace SpawnDev.EBML
             Console.WriteLine($"DocType: {DocType}");
         }
         /// <summary>
+        /// The original, LIVE PatchStream backing this document. Unlike Info.Stream
+        /// which may temporarily be swapped to a stable snapshot during FindInfo,
+        /// _LiveStream always refers to the real stream that receives writes.
+        /// </summary>
+        private PatchStream _LiveStream = default!;
+        /// <summary>
         /// Creates a new instance
         /// </summary>
-        public EBMLDocument(Stream stream, EBMLParser? parser = null, string? filename = null) : base()
+        public EBMLDocument(Stream stream, EBMLParser? parser = null, string? filename = null, int typeIndex = 0, ulong? size = null) : base()
         {
             if (filename != null) Filename = filename;
             if (stream == null) throw new ArgumentNullException(nameof(stream));
             parser ??= new EBMLParser();
-            Info.Path = "/";
-            Info.InstancePath = "/";
+            Info.Name = "";
+            //Info.Path = "";
+            //Info.InstancePath = $",{typeIndex}";
             Info.Id = 0;
+            Info.TypeIndex = typeIndex;
             Info.Depth = -1;
-            Info.DocumentOffset = stream.Position;
+            Info.Offset = stream.Position;
             Info.Exists = true;
+            Info.Size = size;
+            Info.DataSize = size != null ? (long)size.Value : stream.Length - stream.Position;
             Document = this;
             _Parser = parser;
-            _Stream = stream is PatchStream patchStream ? patchStream : new PatchStream(stream);
-            _Stream.OnChanged += _Stream_OnChanged;
-            _Stream.OnRestorePointsChanged += _Stream_OnRestorePointsChanged;
+            Info.Stream = stream is PatchStream patchStream ? patchStream : new PatchStream(stream);
+            _LiveStream = Info.Stream;
             LoadEngines();
             Stream.RestorePoint = true;
+            Stream.OnChanged += _Stream_OnChanged;
+            Stream.OnRestorePointsChanged += _Stream_OnRestorePointsChanged;
             FindInfo("/EBML/DocTpe").FirstOrDefault();
             Console.WriteLine($"DocType: {DocType}");
         }
@@ -111,7 +127,7 @@ namespace SpawnDev.EBML
                 RunDocumentEngines();
                 if (CanUpdate)
                 {
-                    Stream.RestorePoint = true;
+                    _LiveStream.RestorePoint = true;
                     FindInfo("/EBML/DocTpe").FirstOrDefault();
                 }
             }
@@ -131,7 +147,7 @@ namespace SpawnDev.EBML
                 }
             }
         }
-        void UpdateHeader(ElementBase element, ref long sizeDiff)
+        void UpdateHeader(BaseElement element, ref long sizeDiff)
         {
             if (sizeDiff != 0)
             {
@@ -143,9 +159,9 @@ namespace SpawnDev.EBML
                 // create new header . compare new header size to old and add diff to size
                 var elementHeaderStream = EBMLStreamExtensions.CreateEBMLHeader(element.Id, (ulong)newSize);
                 // replace current header with new header
-                Stream.Position = element.Offset;
+                _LiveStream.Position = element.Offset;
                 if (Verbose) Console.WriteLine($"-- Replacing header: {InstancePath} {element.DataSize} > {newSize}");
-                Stream.Insert(elementHeaderStream, element.HeaderSize);
+                _LiveStream.Insert(elementHeaderStream, element.HeaderSize);
                 var headerSizeDiff = elementHeaderStream.Length - element.HeaderSize;
                 sizeDiff += headerSizeDiff;
             }
@@ -155,8 +171,9 @@ namespace SpawnDev.EBML
         /// </summary>
         /// <param name="changedElement"></param>
         /// <param name="newDataSize"></param>
-        protected internal override void DataChanged(ElementBase changedElement, long newDataSize)
+        protected internal override void DataChanged(BaseElement changedElement, long newDataSize)
         {
+            var changedElements = new List<BaseElement> { changedElement };
             // Fix headers starting with the changed element and going up the ancestor list
             if (changedElement != this)
             {
@@ -166,8 +183,8 @@ namespace SpawnDev.EBML
                     // new data size is -header size
                     newDataSize = -changedElement.HeaderSize;
                     // delete the entire element
-                    Stream.Position = changedElement.Offset;
-                    Stream.Delete(changedElement.TotalSize);
+                    _LiveStream.Position = changedElement.Offset;
+                    _LiveStream.Delete(changedElement.TotalSize);
                     // notify parent so it can adjust the size value in its header
                     // newDataSize = -1 to signify deletion
                 }
@@ -179,6 +196,7 @@ namespace SpawnDev.EBML
                         UpdateHeader(changedElement, ref sizeDiff);
                     }
                     var ancestors = changedElement.GetAncestors(true);
+                    changedElements.AddRange(ancestors);
                     foreach (var ancestor in ancestors)
                     {
                         UpdateHeader(ancestor, ref sizeDiff);
@@ -189,16 +207,29 @@ namespace SpawnDev.EBML
                     }
                 }
             }
-            // the stream can be marked as stable again now that headers have been verified
-            if (Verbose) Console.WriteLine($"----------------------------------------------------------: {Stream.RestorePoint}");
-            ChangeEventBackLog.Add(changedElement);
-            unhandledChanges++;
-            Stream.RestorePoint = true;
-            FindInfo("/EBML/DocTpe").FirstOrDefault();
-            RunDocumentEngines();
-            Stream.RestorePoint = true;
-            if (CanUpdate) FindInfo("/EBML/DocTpe").FirstOrDefault();
+            if (InChange) return;
+            InChange = true;
+            try
+            {
+                // the stream can be marked as stable again now that headers have been verified
+                if (Verbose) Console.WriteLine($"----------------------------------------------------------: {_LiveStream.RestorePoint}");
+                ChangeEventBackLog.Add(changedElement);
+                unhandledChanges++;
+                _LiveStream.RestorePoint = true;
+                FindInfo("/EBML/DocTpe").FirstOrDefault();
+                RunDocumentEngines();
+                _LiveStream.RestorePoint = true;
+                foreach (var elem in changedElements)
+                {
+                    First(elem.InstancePath);
+                }
+            }
+            finally
+            {
+                InChange = false;
+            }
         }
+        bool InChange = false;
         protected Dictionary<string, ElementStreamInfo> CachedItems = new Dictionary<string, ElementStreamInfo>();
         /// <summary>
         /// List of loaded document engines
@@ -222,15 +253,15 @@ namespace SpawnDev.EBML
                 ret.Add(engineInfo, engine);
             }
         }
-        public bool CanUndo => Stream?.CanRestorePointUndo ?? false;
-        public bool CanRedo => Stream?.CanRestorePointRedo ?? false;
+        public bool CanUndo => _LiveStream?.CanRestorePointUndo ?? false;
+        public bool CanRedo => _LiveStream?.CanRestorePointRedo ?? false;
         public bool Undo()
         {
-            return Stream.RestorePointUndo();
+            return _LiveStream.RestorePointUndo();
         }
         public bool Redo()
         {
-            return Stream.RestorePointRedo();
+            return _LiveStream.RestorePointRedo();
         }
         private void Engine_OnLog(string msg)
         {
@@ -271,15 +302,16 @@ namespace SpawnDev.EBML
         /// <summary>
         /// True if the document engines should run when the document changes
         /// </summary>
-        public bool DocumentEnginesEnabled { get; private set; } = true;
+        public bool DocumentEnginesEnabled { get; private set; } = false;
+        public bool DocumentEnginesEnabledGlobal { get; private set; } = false;
         /// <summary>
         /// Returns true if the document engines are running
         /// </summary>
         public bool DocumentEnginesRunning { get; private set; } = false;
         int unhandledChanges = 0;
-        List<ElementBase> ChangeEventBackLog = new List<ElementBase>();
-        public bool VerboseEngines { get; set; } = false;
-        public bool VerboseStream { get; set; } = false;
+        List<BaseElement> ChangeEventBackLog = new List<BaseElement>();
+        public bool VerboseEngines { get; set; } = true;
+        public bool VerboseStream { get; set; } = true;
         /// <summary>
         /// Run the document engines.<br/>
         /// If the document has not changed, the engines will not run unless forceRun == true
@@ -288,7 +320,8 @@ namespace SpawnDev.EBML
         /// <exception cref="Exception"></exception>
         public void RunDocumentEngines(bool forceRun = false)
         {
-            if ((!DocumentEnginesEnabled && !forceRun) || DocumentEnginesRunning || !Stream.RestorePoint)
+            if (!DocumentEnginesEnabledGlobal) return;
+            if ((!DocumentEnginesEnabled && !forceRun) || DocumentEnginesRunning || !_LiveStream.RestorePoint)
             {
                 if (!DocumentEnginesEnabled)
                 {
@@ -297,7 +330,7 @@ namespace SpawnDev.EBML
                 return;
             }
             DocumentEnginesRunning = true;
-            if (VerboseEngines) Console.WriteLine("Running document engines");
+            if (VerboseEngines) Console.WriteLine($"Running document engines: {DocumentEngines.Values.Count}");
             var sw = Stopwatch.StartNew();
             var iterations = 0;
             try
@@ -307,7 +340,7 @@ namespace SpawnDev.EBML
                 {
                     unhandledChanges = 0;
                     var changeEventBackLog = ChangeEventBackLog;
-                    ChangeEventBackLog = new List<ElementBase>();
+                    ChangeEventBackLog = new List<BaseElement>();
                     foreach (var documentEngine in DocumentEngines.Values)
                     {
                         if (!documentEngine.Enabled)
@@ -365,7 +398,7 @@ namespace SpawnDev.EBML
         {
             get
             {
-                if (Info.PatchId != Stream.LatestStable.PatchId)
+                if (base.Info.PatchId != _LiveStream.LatestStable.PatchId)
                 {
                     ReadString("/EBML,0/DocType,0");
                 }
@@ -380,8 +413,25 @@ namespace SpawnDev.EBML
         bool SkipUnneededData = true;
         public override IEnumerable<ElementStreamInfo> FindInfo(string path)
         {
-            var stream = Stream.LatestStable;
+            var changed = false;
+            var stream = Info.Stream;
             var patchId = stream.PatchId;
+            // The latest stable snapshot must be computed on the LIVE stream,
+            // NOT on Info.Stream. If we used Info.Stream and it had already been
+            // swapped to a prior snapshot, `snapshot.LatestStable` would just be
+            // the snapshot itself and the document could never observe later
+            // restore points committed on the live stream.
+            if (Info.PatchId != _LiveStream.LatestStable.PatchId)
+            {
+                stream = _LiveStream.LatestStable;
+                patchId = stream.PatchId;
+                changed = true;
+                MasterCache.Clear();
+                if (Verbose) Console.WriteLine($"*********** Changed to patch: {patchId}");
+                Info.Stream = stream;
+                Info.DataSize = stream.Length - DocumentOffset;
+                Info.Size = (ulong)Info.DataSize;
+            }
             // path must be a full path element 
             if (!path.StartsWith("/")) path = $"/{path}";
             if (CachedItems.TryGetValue(path, out var cacheMatch) && cacheMatch.PatchId == patchId)
@@ -391,18 +441,9 @@ namespace SpawnDev.EBML
                 yield break;
             }
             var sw = Stopwatch.StartNew();
-            var changed = false;
             var resultCount = 0;
             try
             {
-                if (Info.PatchId != patchId)
-                {
-                    changed = true;
-                    MasterCache.Clear();
-                    // patch changed
-                    Info.PatchId = patchId;
-                    if (Verbose) Console.WriteLine($"*********** Changed to patch: {patchId}");
-                }
                 if (Verbose) Console.WriteLine($"? {path}");
                 var parser = Parser;
                 long documentOffset = DocumentOffset;
@@ -458,6 +499,10 @@ namespace SpawnDev.EBML
                         yield break;
                     }
                 }
+                //if(CachedItems.TryGetValue(filterParentInstancePath, out var cachedParentMasterElement))
+                //{
+                //    startPos = cachedParentMasterElement
+                //}
                 // verify document is EBML
                 var pos = stream.Position;
                 stream.Position = documentOffset;
@@ -526,7 +571,6 @@ namespace SpawnDev.EBML
                         stack.Remove(parent);
                         parent = stack.Last();
                     }
-                    var skipIfMaster = SkipUnneededData;
                     var elementType = schemaElement?.Type;
                     var elementIndex = parent.ChildCount;
                     var elementTypeIndex = parent.Seen(id);
@@ -535,6 +579,7 @@ namespace SpawnDev.EBML
                     var elementInstancePath = $"{parent.InstancePath.TrimEnd(EBMLParser.PathDelimiters)}{EBMLParser.PathDelimiter}{elementName},{elementTypeIndex}";
                     var elementDepth = elementPath.Split(EBMLParser.PathDelimiters, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Length - 1;
                     var elementParentInstancePath = EBMLConverter.PathParent(elementInstancePath);
+                    var elementIsMaster = elementType == "master";
                     var iteratedInfo = new IteratedElementInfo
                     {
                         Path = elementPath,
@@ -558,19 +603,20 @@ namespace SpawnDev.EBML
                     elementStreamInfo.Name = elementName;
                     elementStreamInfo.SchemaElement = schemaElement;
                     elementStreamInfo.Index = parent.ChildCount - 1;
-                    elementStreamInfo.Path = elementPath;
-                    elementStreamInfo.InstancePath = elementInstancePath;
+                    //elementStreamInfo.Path = elementPath;
+                    //elementStreamInfo.InstancePath = elementInstancePath;
                     elementStreamInfo.Size = size;
                     elementStreamInfo.TypeIndex = elementTypeIndex;
                     elementStreamInfo.DataOffset = dataPosition;
-                    elementStreamInfo.PatchId = patchId;
                     elementStreamInfo.DataSize = maxDataSize;
                     elementStreamInfo.TotalSize = maxDataSize + headerSize;
                     elementStreamInfo.HeaderSize = headerSize;
-                    elementStreamInfo.ParentInstancePath = elementParentInstancePath;
+                    //elementStreamInfo.ParentInstancePath = elementParentInstancePath;
                     elementStreamInfo.Depth = elementDepth;
-                    elementStreamInfo.DocumentOffset = documentOffset;
+                    //elementStreamInfo.DocumentOffset = documentOffset;
                     elementStreamInfo.Exists = true;
+                    //elementStreamInfo.Updated(stream);
+                    elementStreamInfo.Stream = stream;
                     if (Verbose) Console.WriteLine($"{new string(' ', 2 * elementDepth + 1)} {elementIndex} {elementOffset} {maxDataSize} {elementName} {iteratedInfo.InstancePath}");
                     if (iteratedInfo.InstancePath == "/EBML,0/DocType,0")
                     {
@@ -582,15 +628,12 @@ namespace SpawnDev.EBML
                         }
                         stream.Position = dataPosition;
                     }
-                    // check if this element is an ancestor of our 
-                    if (EBMLConverter.IsAncestor(target, elementInstancePath))
-                    {
-                        skipIfMaster = false;
-                    }
+                    // by default, all elements with a known size AND not an ancestor of the target get skipped
+                    var skipElement = size != null && (!elementIsMaster || !EBMLConverter.IsAncestor(target, elementInstancePath));
                     if (filterParentInstancePath == iteratedInfo.InstancePath && targetParent == null)
                     {
                         // target parent found
-                        skipIfMaster = false;
+                        skipElement = false;
                         targetParent = iteratedInfo;
                     }
                     else if (targetParent == parent || (targetParent == null && filterParentInstancePath == parent.InstancePath))
@@ -628,39 +671,38 @@ namespace SpawnDev.EBML
                     // - Any EBML Element that is a valid Root Element according to the EBML Schema, Global Elements excluded.
                     // - The end of the Parent Element with a known size has been reached.
                     // - The end of the EBML Document, either when reaching the end of the file or because a new EBML Header started.
-                    if (schemaElement?.Type == "master")
+                    if (skipElement && elementIsMaster && elementName == "EBML" && (!CachedItems.TryGetValue("/EBML,0/DocType,0", out var docTypeInfo) || docTypeInfo.PatchId != patchId))
                     {
-                        if (elementName == "EBML" && (!CachedItems.TryGetValue("/EBML,0/DocType,0", out var docTypeInfo) || docTypeInfo.PatchId != patchId))
+                        // UpDocType not found in cache
+                        // iterate EBML to try and get DocType
+                        skipElement = false;
+                    }
+                    if (skipElement)
+                    {
+                        // we can only skip this if it does not match our filter (and size is know, checked earlier)
+                        // or is not a master element
+                        stream.Position = dataPosition + (long)size!.Value;
+                        if (elementIsMaster)
                         {
-                            // iterate EBML to try and get DocType
-                            skipIfMaster = false;
-                        }
-                        if (skipIfMaster && size != null)
-                        {
-                            // we can only skip this if it does not match our filter
-                            stream.Position = dataPosition + (long)size.Value;
-                        }
-                        else
-                        {
-                            // has to be iterated
-                            stack.Add(iteratedInfo);
-                            parent = iteratedInfo;
-                            if (!MasterCache.TryGetValue(parent.InstancePath, out masterCacheItem))
-                            {
-                                masterCacheItem = new MasterCacheItem
-                                {
-                                    InstancePath = parent.InstancePath,
-                                };
-                                MasterCache.Add(parent.InstancePath, masterCacheItem);
-                            }
-                            parent.MasterCacheItem = masterCacheItem;
-                            if (Verbose) Console.WriteLine($">> {parent.InstancePath}");
+                            if (Verbose) Console.WriteLine($"*** Skipping: {elementInstancePath}");
                         }
                     }
                     else
                     {
-                        // skip data (only master elements are allowed to be unknown size according the EBML spec
-                        stream.Position = dataPosition + (long)size!.Value;
+                        // has to be iterated
+                        // stream.Position is left at elementOffset for next iteration
+                        stack.Add(iteratedInfo);
+                        parent = iteratedInfo;
+                        if (!MasterCache.TryGetValue(parent.InstancePath, out masterCacheItem))
+                        {
+                            masterCacheItem = new MasterCacheItem
+                            {
+                                InstancePath = parent.InstancePath,
+                            };
+                            MasterCache.Add(parent.InstancePath, masterCacheItem);
+                        }
+                        parent.MasterCacheItem = masterCacheItem;
+                        if (Verbose) Console.WriteLine($">> {parent.InstancePath}");
                     }
                     // all elements after and including the first element that has ended have ended
                     var ended = stack.Where(o => o.MaxDataSize + o.DataOffset <= stream.Position).FirstOrDefault();
@@ -672,19 +714,20 @@ namespace SpawnDev.EBML
                         // remove starting with the last
                         // not needed ATM but will be if there are unreported results due to unknown sized elements
                         allEnded.Reverse();
-                        foreach (var i in allEnded)
+                        foreach (var endedIteratedMaster in allEnded)
                         {
                             // this instance has been fully iterated and can now be used instead of iterating file if possible
-                            i.MasterCacheItem.Complete = true;
-                            var calculatedSize = parent.DataOffset - elementOffset;
-                            Console.WriteLine($"calculatedSize: {calculatedSize} declared: {parent.MaxDataSize}");
-                            if (i.UnknownSize)
+                            endedIteratedMaster.MasterCacheItem.Complete = true;
+                            // size of ending master element is master element stream.Position - master.DataOffset
+                            var calculatedSize = stream.Position - endedIteratedMaster.DataOffset;
+                            Console.WriteLine($"calculatedSize: {calculatedSize} declared: {endedIteratedMaster.MaxDataSize}");
+                            if (endedIteratedMaster.UnknownSize)
                             {
-                                parent.MaxDataSize = calculatedSize;
+                                endedIteratedMaster.MaxDataSize = calculatedSize;
                                 // can now yield queued results
                                 // TODO
                             }
-                            if (Verbose) Console.WriteLine($"<< {i.InstancePath}");
+                            if (Verbose) Console.WriteLine($"<< {endedIteratedMaster.InstancePath}");
                         }
                         if (stack.Count == 0)
                         {
@@ -696,8 +739,7 @@ namespace SpawnDev.EBML
             }
             finally
             {
-                Console.WriteLine($"---------? {path} {sw.Elapsed.TotalMilliseconds}");
-                if (Verbose) Console.WriteLine($"! {resultCount}");
+                if (Verbose) Console.WriteLine($"! {resultCount} {sw.Elapsed.TotalMilliseconds} {path} ");
                 if (changed)
                 {
                     Changed();
@@ -706,329 +748,8 @@ namespace SpawnDev.EBML
         }
         public override async IAsyncEnumerable<ElementStreamInfo> FindInfoAsync(string path, CancellationToken cancellationToken)
         {
-            var stream = Stream.LatestStable;
-            var patchId = stream.PatchId;
-            // path must be a full path element 
-            if (!path.StartsWith("/")) path = $"/{path}";
-            if (CachedItems.TryGetValue(path, out var cacheMatch) && cacheMatch.PatchId == patchId)
-            {
-                // save processing not reiterating parents to get to the cached result
-                yield return cacheMatch;
-                yield break;
-            }
-            var sw = Stopwatch.StartNew();
-            var changed = false;
-            var resultCount = 0;
-            try
-            {
-                if (Info.PatchId != patchId)
-                {
-                    changed = true;
-                    MasterCache.Clear();
-                    // patch changed
-                    Info.PatchId = patchId;
-                    if (Verbose) Console.WriteLine($"*********** Changed to patch: {patchId}");
-                }
-                if (Verbose) Console.WriteLine($"? {path}");
-                var parser = Parser;
-                long documentOffset = DocumentOffset;
-                var startPos = documentOffset;
-                var startInstancePath = "/";
-                EBMLConverter.PathToParentInstancePathNameIndex(path, out var filterParentInstancePath, out var iname, out var index, true);
-                if (string.IsNullOrEmpty(filterParentInstancePath)) filterParentInstancePath = "/";
-                var target = $"{filterParentInstancePath}/{iname},{index}";
-                var singleTarget = index < 0;
-                var partType = iname.StartsWith("@") ? iname.Substring(1) : "";
-                var partId = !iname.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? 0 : EBMLConverter.ElementIdFromHexId(iname);
-                var currentIndex = -1;
-                ElementStreamInfo? elementStreamInfo = null;
-                // check cache for filter parent
-                if (MasterCache.TryGetValue(filterParentInstancePath, out var cachedResults))
-                {
-                    if (cachedResults.Complete)
-                    {
-                        // the master element has been fully iterated
-                        if (iname == "" && index == -1)
-                        {
-                            // no filter
-                            foreach (var i in cachedResults.Children.Values)
-                            {
-                                yield return i;
-                            }
-                        }
-                        else
-                        {
-                            // filter used
-                            foreach (var i in cachedResults.Children.Values)
-                            {
-                                elementStreamInfo = i;
-                                var partTypeMatches = (partType == elementStreamInfo.SchemaElement?.Type)
-                                    || partType == "strings" && (elementStreamInfo.SchemaElement?.Type == "string" || elementStreamInfo.SchemaElement?.Type == "utf-8");
-                                // inside target parent. check if element filters match
-                                if (
-                                    (partId > 0 && partId == elementStreamInfo.Id)
-                                    || partTypeMatches
-                                    || iname == elementStreamInfo.Name
-                                    || iname == "")
-                                {
-                                    // match found for at 1 except index
-                                    currentIndex++;
-                                    if (index == currentIndex || index == -1)
-                                    {
-                                        yield return elementStreamInfo;
-                                    }
-                                }
-                            }
-                        }
-                        resultCount = currentIndex;
-                        yield break;
-                    }
-                }
-                // verify document is EBML
-                var pos = stream.Position;
-                stream.Position = documentOffset;
-                if (!parser.IsEBML(stream))
-                {
-                    stream.Position = pos;
-                    yield break;
-                }
-                stream.Position = startPos;
-                var endPos = stream.Length;
-                var stack = new List<IteratedElementInfo>
-                {
-                    new IteratedElementInfo
-                    {
-                        Path = EBMLConverter.PathFromInstancePath(startInstancePath),
-                        InstancePath = startInstancePath,
-                        MaxDataSize = endPos - documentOffset,
-                        DataOffset = startPos,
-                        Depth = startInstancePath.Split(EBMLParser.PathDelimiters, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Length - 1,
-                    }
-                };
-                var parent = stack.Last();
-                if (!MasterCache.TryGetValue(parent.InstancePath, out var masterCacheItem))
-                {
-                    masterCacheItem = new MasterCacheItem
-                    {
-                        InstancePath = parent.InstancePath,
-                    };
-                    MasterCache.Add(parent.InstancePath, masterCacheItem);
-                }
-                parent.MasterCacheItem = masterCacheItem;
-                IteratedElementInfo? targetParent = filterParentInstancePath == parent.InstancePath ? parent : null;
-                while (stream.CanRead && stream.Position < endPos)
-                {
-                    var elementOffset = stream.Position;
-                    ulong id;
-                    ulong? size;
-                    try
-                    {
-                        var header = await ElementHeader.ReadAsync(stream, cancellationToken);
-                        size = header.Size;
-                        id = header.Id;
-                    }
-                    catch
-                    {
-                        yield break;
-                    }
-                    var dataPosition = stream.Position;
-                    var streamBytesLeft = stream.Length - dataPosition;
-                    var headerSize = dataPosition - elementOffset;
-                    var maxDataSize = size != null ? (long)size.Value : streamBytesLeft;
-                    var schemaElement = parser.GetElement(id, _DocType);
-                    while (parent.UnknownSize && schemaElement != null && !parser.CheckParent(parent!.Path, schemaElement))
-                    {
-                        var calculatedSize = parent.DataOffset - elementOffset;
-                        parent.MaxDataSize = calculatedSize;
-                        parent.MasterCacheItem.Complete = true;
-                        if (parent == targetParent)
-                        {
-                            yield break;
-                        }
-                        if (stack.Count == 1)
-                        {
-                            yield break;
-                        }
-                        stack.Remove(parent);
-                        parent = stack.Last();
-                    }
-                    var skipIfMaster = SkipUnneededData;
-                    var elementType = schemaElement?.Type;
-                    var elementIndex = parent.ChildCount;
-                    var elementTypeIndex = parent.Seen(id);
-                    var elementName = schemaElement?.Name ?? EBMLConverter.ElementIdToHexId(id);
-                    var elementPath = $"{parent.Path.TrimEnd(EBMLParser.PathDelimiters)}{EBMLParser.PathDelimiter}{elementName}";
-                    var elementInstancePath = $"{parent.InstancePath.TrimEnd(EBMLParser.PathDelimiters)}{EBMLParser.PathDelimiter}{elementName},{elementTypeIndex}";
-                    var elementDepth = elementPath.Split(EBMLParser.PathDelimiters, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Length - 1;
-                    var elementParentInstancePath = EBMLConverter.PathParent(elementInstancePath);
-                    var iteratedInfo = new IteratedElementInfo
-                    {
-                        Path = elementPath,
-                        InstancePath = elementInstancePath,
-                        MaxDataSize = maxDataSize,
-                        UnknownSize = size == null,
-                        DataOffset = dataPosition,
-                        Depth = elementDepth,
-                    };
-                    if (!CachedItems.TryGetValue(elementInstancePath, out elementStreamInfo))
-                    {
-                        elementStreamInfo = new ElementStreamInfo();
-                        CachedItems.Add(elementInstancePath, elementStreamInfo);
-                    }
-                    if (!parent.MasterCacheItem.Children.TryGetValue(elementInstancePath, out var child) || child != elementStreamInfo)
-                    {
-                        parent.MasterCacheItem.Children[elementInstancePath] = elementStreamInfo;
-                    }
-                    elementStreamInfo.Offset = elementOffset;
-                    elementStreamInfo.Id = id;
-                    elementStreamInfo.Name = elementName;
-                    elementStreamInfo.SchemaElement = schemaElement;
-                    elementStreamInfo.Index = parent.ChildCount - 1;
-                    elementStreamInfo.Path = elementPath;
-                    elementStreamInfo.InstancePath = elementInstancePath;
-                    elementStreamInfo.Size = size;
-                    elementStreamInfo.TypeIndex = elementTypeIndex;
-                    elementStreamInfo.DataOffset = dataPosition;
-                    elementStreamInfo.PatchId = patchId;
-                    elementStreamInfo.DataSize = maxDataSize;
-                    elementStreamInfo.TotalSize = maxDataSize + headerSize;
-                    elementStreamInfo.HeaderSize = headerSize;
-                    elementStreamInfo.ParentInstancePath = elementParentInstancePath;
-                    elementStreamInfo.Depth = elementDepth;
-                    elementStreamInfo.DocumentOffset = documentOffset;
-                    elementStreamInfo.Exists = true;
-                    if (Verbose) Console.WriteLine($"{new string(' ', 2 * elementDepth + 1)} {elementIndex} {elementOffset} {maxDataSize} {elementName} {iteratedInfo.InstancePath}");
-                    if (iteratedInfo.InstancePath == "/EBML,0/DocType,0")
-                    {
-                        var dt = stream.ReadEBMLStringASCII((int)size!.Value);
-                        if (!string.IsNullOrEmpty(dt) && dt != _DocType)
-                        {
-                            _DocType = dt;
-                            if (Verbose) Console.WriteLine($"DocType found: {_DocType}");
-                        }
-                        stream.Position = dataPosition;
-                    }
-                    // check if this element is an ancestor of our 
-                    if (EBMLConverter.IsAncestor(target, elementInstancePath))
-                    {
-                        skipIfMaster = false;
-                    }
-                    if (filterParentInstancePath == iteratedInfo.InstancePath && targetParent == null)
-                    {
-                        // target parent found
-                        skipIfMaster = false;
-                        targetParent = iteratedInfo;
-                    }
-                    else if (targetParent == parent || (targetParent == null && filterParentInstancePath == parent.InstancePath))
-                    {
-                        targetParent = parent;
-                        var partTypeMatches = (partType == elementType) || partType == "strings" && (elementType == "string" || elementType == "utf-8");
-                        // inside target parent. check if element filters match
-                        if (
-                            (partId > 0 && partId == id)
-                            || partTypeMatches
-                            || iname == elementName
-                            || iname == "")
-                        {
-                            // match found for at 1 except index
-                            currentIndex++;
-                            if (index == currentIndex || index == -1)
-                            {
-                                // TODO - if this element is unknown size, defer all further yields (to maintain yield order) until size is determined
-                                // need test media with unknown size element. will create using browser (they create webm videos with elements of unknown size)
-                                // ... or, add a method to MasterElement GetSize() that will the master element's size
-                                resultCount++;
-                                if (Verbose) Console.WriteLine($"Match: ^^^^^^^^^^^^^^^");
-                                yield return elementStreamInfo!;
-                                stream.Position = dataPosition;
-                                if (index == currentIndex)
-                                {
-                                    yield break;
-                                }
-                            }
-                        }
-                    }
-                    // The end of an Unknown - Sized Element is determined by whichever comes first:
-                    // - Any EBML Element that is a valid Parent Element of the Unknown - Sized Element according to the EBML Schema, Global Elements excluded.
-                    // - Any valid EBML Element according to the EBML Schema, Global Elements excluded, that is not a Descendant Element of the Unknown-Sized Element but shares a common direct parent, such as a Top - Level Element.
-                    // - Any EBML Element that is a valid Root Element according to the EBML Schema, Global Elements excluded.
-                    // - The end of the Parent Element with a known size has been reached.
-                    // - The end of the EBML Document, either when reaching the end of the file or because a new EBML Header started.
-                    if (schemaElement?.Type == "master")
-                    {
-                        if (elementName == "EBML" && (!CachedItems.TryGetValue("/EBML,0/DocType,0", out var docTypeInfo) || docTypeInfo.PatchId != patchId))
-                        {
-                            // iterate EBML to try and get DocType
-                            skipIfMaster = false;
-                        }
-                        if (skipIfMaster && size != null)
-                        {
-                            // we can only skip this if it does not match our filter
-                            stream.Position = dataPosition + (long)size.Value;
-                        }
-                        else
-                        {
-                            // has to be iterated
-                            stack.Add(iteratedInfo);
-                            parent = iteratedInfo;
-                            if (!MasterCache.TryGetValue(parent.InstancePath, out masterCacheItem))
-                            {
-                                masterCacheItem = new MasterCacheItem
-                                {
-                                    InstancePath = parent.InstancePath,
-                                };
-                                MasterCache.Add(parent.InstancePath, masterCacheItem);
-                            }
-                            parent.MasterCacheItem = masterCacheItem;
-                            if (Verbose) Console.WriteLine($">> {parent.InstancePath}");
-                        }
-                    }
-                    else
-                    {
-                        // skip data (only master elements are allowed to be unknown size according the EBML spec
-                        stream.Position = dataPosition + (long)size!.Value;
-                    }
-                    // all elements after and including the first element that has ended have ended
-                    var ended = stack.Where(o => o.MaxDataSize + o.DataOffset <= stream.Position).FirstOrDefault();
-                    if (ended != null)
-                    {
-                        var endedIndex = stack.IndexOf(ended);
-                        var allEnded = stack.Skip(endedIndex).ToList();
-                        stack = stack.Take(endedIndex).ToList();
-                        // remove starting with the last
-                        // not needed ATM but will be if there are unreported results due to unknown sized elements
-                        allEnded.Reverse();
-                        foreach (var i in allEnded)
-                        {
-                            // this instance has been fully iterated and can now be used instead of iterating file if possible
-                            i.MasterCacheItem.Complete = true;
-                            var calculatedSize = parent.DataOffset - elementOffset;
-                            Console.WriteLine($"calculatedSize: {calculatedSize} declared: {parent.MaxDataSize}");
-                            if (i.UnknownSize)
-                            {
-                                parent.MaxDataSize = calculatedSize;
-                                // can now yield queued results
-                                // TODO
-                            }
-                            if (Verbose) Console.WriteLine($"<< {i.InstancePath}");
-                        }
-                        if (stack.Count == 0)
-                        {
-                            yield break;
-                        }
-                        parent = stack.Last();
-                    }
-                }
-            }
-            finally
-            {
-                Console.WriteLine($"---------? {path} {sw.Elapsed.TotalMilliseconds}");
-                if (Verbose) Console.WriteLine($"! {resultCount}");
-                if (changed)
-                {
-                    Changed();
-                }
-            }
+            // TODO
+            yield break;
         }
     }
 }

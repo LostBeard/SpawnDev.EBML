@@ -36,11 +36,11 @@ namespace BlazorEBMLViewer.Pages
         [Inject]
         AppService AppService { get; set; }
 
-        async Task RowSelect(ElementBase element)
+        async Task RowSelect(BaseElement element)
         {
             StateHasChanged();
         }
-        async Task RowDeselect(ElementBase element)
+        async Task RowDeselect(BaseElement element)
         {
             StateHasChanged();
         }
@@ -113,7 +113,7 @@ namespace BlazorEBMLViewer.Pages
         {
             Document?.Redo();
         }
-        async Task SetPath(ElementBase element)
+        async Task SetPath(BaseElement element)
         {
             if (element == null) return;
             DocumentBusy = true;

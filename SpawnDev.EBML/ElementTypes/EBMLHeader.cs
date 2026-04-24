@@ -2,7 +2,7 @@
 
 namespace SpawnDev.EBML.ElementTypes
 {
-    [ElementName("ebml", "EBML")]
+    [ElementName("EBML")]
     public class EBMLHeader : MasterElement
     {
         /// <summary>

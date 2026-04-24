@@ -27,24 +27,24 @@ namespace BlazorEBMLViewer.Components
         [CascadingParameter]
         public MasterElement? ActiveContainer { get; set; }
 
-        RadzenDataGrid<ElementBase> grid;
+        RadzenDataGrid<BaseElement> grid;
         int count;
-        IEnumerable<ElementBase> orderDetails = new List<ElementBase>();
+        IEnumerable<BaseElement> orderDetails = new List<BaseElement>();
 
         bool IsLoading { get; set; }
 
-        public ElementBase? Selected { get; set; } = null;
+        public BaseElement? Selected { get; set; } = null;
 
         [Parameter]
-        public EventCallback<ElementBase> DoubleClick { get; set; }
+        public EventCallback<BaseElement> DoubleClick { get; set; }
         [Parameter]
-        public EventCallback<ElementBase> Select { get; set; }
+        public EventCallback<BaseElement> Select { get; set; }
         [Parameter]
-        public EventCallback<ElementBase> Deselect { get; set; }
+        public EventCallback<BaseElement> Deselect { get; set; }
         [Parameter]
         public EventCallback<RowContextMenuArgs> RowContextMenu { get; set; }
 
-        async Task RowDoubleClick(DataGridRowMouseEventArgs<ElementBase> args)
+        async Task RowDoubleClick(DataGridRowMouseEventArgs<BaseElement> args)
         {
             await DoubleClick.InvokeAsync(args.Data);
         }
@@ -71,17 +71,17 @@ namespace BlazorEBMLViewer.Components
                 }
             }
         }
-        bool IsEditing(string columnName, ElementBase order)
+        bool IsEditing(string columnName, BaseElement order)
         {
             // Comparing strings is quicker than checking the contents of a List, so let the property check fail first.
-            if (columnName != nameof(ElementBase.DataString))
+            if (columnName != nameof(BaseElement.DataString))
             {
                 return false;
             }
             return columnEditing == columnName && Editing == order;
         }
         string? columnEditing = null;
-        void OnCellClick(DataGridCellMouseEventArgs<ElementBase> args)
+        void OnCellClick(DataGridCellMouseEventArgs<BaseElement> args)
         {
             var detail = args.Data;
             // This sets which column is currently being edited.
@@ -96,7 +96,7 @@ namespace BlazorEBMLViewer.Components
                 OnUpdateRow(Editing);
             }
             // only the data column is editable
-            if (columnEditing != nameof(ElementBase.DataString))
+            if (columnEditing != nameof(BaseElement.DataString))
             {
                 return;
             }
@@ -132,7 +132,7 @@ namespace BlazorEBMLViewer.Components
             // This sets the Item to be edited.
             EditRow(detail);
         }
-        ElementBase? Editing = null;
+        BaseElement? Editing = null;
         void ResetEdit()
         {
             if (Editing == null) return;
@@ -145,7 +145,7 @@ namespace BlazorEBMLViewer.Components
             await grid.RefreshDataAsync();
             StateHasChanged();
         }
-        void OnUpdateRow(ElementBase order)
+        void OnUpdateRow(BaseElement order)
         {
             ResetEdit();
 
@@ -158,24 +158,24 @@ namespace BlazorEBMLViewer.Components
 
             //editedFields = editedFields.Where(c => c.Key != order.OrderID).ToList();
         }
-        void EditRow(ElementBase order)
+        void EditRow(BaseElement order)
         {
             ResetEdit();
             Editing = order;
         }
-        async Task RowSelect(ElementBase element)
+        async Task RowSelect(BaseElement element)
         {
             if (element == null) return;
             Selected = element;
             await Select.InvokeAsync(element);
         }
-        async Task RowDeselect(ElementBase element)
+        async Task RowDeselect(BaseElement element)
         {
             if (Selected == null) return;
             await Deselect.InvokeAsync(element);
             Selected = null;
         }
-        async Task ContextMenu(MouseEventArgs args, ElementBase element)
+        async Task ContextMenu(MouseEventArgs args, BaseElement element)
         {
             await RowContextMenu.InvokeAsync(new RowContextMenuArgs(args, element));
         }
@@ -183,7 +183,7 @@ namespace BlazorEBMLViewer.Components
         {
             //var element = elements.First();
             //JS.Log("GRID: Document_OnChanged", elements.Count(), element.Depth, element.Name, element.Path);
-            if (grid != null)
+            if (grid != null && !IsLoading)
             {
                 await ReLoadData();
                 await grid.RefreshDataAsync();
@@ -193,35 +193,50 @@ namespace BlazorEBMLViewer.Components
         LoadDataArgs? lastArgs = new LoadDataArgs();
         string? lastfilter = null;
         Task ReLoadData() => LoadData(null);
+        int minChangeDelay = 100;
         async Task LoadData(LoadDataArgs args)
         {
             args ??= lastArgs ?? new LoadDataArgs();
             lastArgs = args;
+            if (IsLoading) return;
             IsLoading = true;
-            await Task.Delay(50);
-            if (!string.IsNullOrEmpty(args.Filter) && lastfilter != args.Filter)
+            await Task.Delay(minChangeDelay);
+            // wait until there are no update requests for [minChangeDelay] ms
+            while (args != lastArgs)
             {
-                args.Skip = 0;
+                Console.WriteLine("Waiting for changes to slow down");
+                args = lastArgs;
+                await Task.Delay(minChangeDelay);
             }
-            var query = ActiveContainer?.Children.AsQueryable() ?? new List<ElementBase>().AsQueryable();
-            if (!string.IsNullOrEmpty(args.Filter))
+            try
             {
-                lastfilter = args.Filter;
-                query = query.Where(args.Filter);
-                count = query.Count();
+                if (!string.IsNullOrEmpty(args.Filter) && lastfilter != args.Filter)
+                {
+                    args.Skip = 0;
+                }
+                var query = ActiveContainer?.Children.AsQueryable() ?? new List<BaseElement>().AsQueryable();
+                if (!string.IsNullOrEmpty(args.Filter))
+                {
+                    lastfilter = args.Filter;
+                    query = query.Where(args.Filter);
+                    count = query.Count();
+                }
+                else
+                {
+                    count = query.Count();
+                }
+                if (!string.IsNullOrEmpty(args.OrderBy))
+                {
+                    query = query.OrderBy(args.OrderBy);
+                }
+                if (args.Skip != null) query = query.Skip(args.Skip.Value);
+                if (args.Top != null) query = query.Take(args.Top.Value);
+                orderDetails = query.ToList();
             }
-            else
+            finally
             {
-                count = query.Count();
+                IsLoading = false;
             }
-            if (!string.IsNullOrEmpty(args.OrderBy))
-            {
-                query = query.OrderBy(args.OrderBy);
-            }
-            if (args.Skip != null) query = query.Skip(args.Skip.Value);
-            if (args.Top != null) query = query.Take(args.Top.Value);
-            orderDetails = query.ToList();
-            IsLoading = false;
         }
         public static string HumandReadableBytes(double len)
         {

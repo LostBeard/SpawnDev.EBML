@@ -2,12 +2,23 @@
 
 namespace SpawnDev.EBML.Elements
 {
-    public class FloatElement : ElementBase
+    public class FloatElement : BaseElement
     {
         /// <summary>
         /// The element type name
         /// </summary>
-        public const  string TypeName  = "float";
+        public const string TypeName = "float";
+        protected override string DataToDataString()
+        {
+            return Data.ToString();
+        }
+        protected override void DataFromDataString(string value)
+        {
+            if (double.TryParse(value, out var v))
+            {
+                Data = v;
+            }
+        }
         public double Data
         {
             get

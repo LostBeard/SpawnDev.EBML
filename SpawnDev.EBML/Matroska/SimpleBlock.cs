@@ -2,8 +2,7 @@
 
 namespace SpawnDev.EBML.Matroska
 {
-    [ElementName("webm", "SimpleBlock")]
-    [ElementName("matroska", "SimpleBlock")]
+    [ElementName(nameof(SimpleBlock), "matroska", "webm")]
     public class SimpleBlock : BinaryElement
     {
         /// <summary>

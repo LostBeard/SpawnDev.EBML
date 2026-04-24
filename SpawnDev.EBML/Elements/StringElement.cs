@@ -3,7 +3,7 @@ using System.Text;
 
 namespace SpawnDev.EBML.Elements
 {
-    public class StringElement : ElementBase
+    public class StringElement : BaseElement
     {
         /// <summary>
         /// The element type name
@@ -13,6 +13,14 @@ namespace SpawnDev.EBML.Elements
         /// The element type name
         /// </summary>
         public const string TypeNameUTF8  = "utf-8";
+        protected override string DataToDataString()
+        {
+            return Data;
+        }
+        protected override void DataFromDataString(string value)
+        {
+            Data = value ?? "";
+        }
         public string Data
         {
             get

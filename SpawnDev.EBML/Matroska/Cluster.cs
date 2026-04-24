@@ -2,14 +2,18 @@
 
 namespace SpawnDev.EBML.Matroska
 {
-    [ElementName("webm", "Cluster")]
-    [ElementName("matroska", "Cluster")]
+    [ElementName(nameof(Cluster), "matroska", "webm")]
     public class Cluster : MasterElement
     {
         /// <summary>
         /// New instance
         /// </summary>
+        /// <param name="document"></param>
         /// <param name="element"></param>
         public Cluster(EBMLDocument document, ElementStreamInfo element) : base(document, element) { }
+        /// <summary>
+        /// Creates a new, detached instance
+        /// </summary>
+        public Cluster() : base() { }
     }
 }

@@ -2,6 +2,7 @@
 using SpawnDev.EBML.Extensions;
 using SpawnDev.EBML.Schemas;
 using SpawnDev.PatchStreams;
+using System.Linq.Expressions;
 
 namespace SpawnDev.EBML.Elements
 {
@@ -9,7 +10,7 @@ namespace SpawnDev.EBML.Elements
     /// The EBML container type<br/>
     /// The only EBML type that can contain other EBML elements
     /// </summary>
-    public partial class MasterElement : ElementBase
+    public partial class MasterElement : BaseElement
     {
         /// <summary>
         /// The element type name
@@ -25,6 +26,10 @@ namespace SpawnDev.EBML.Elements
         /// Constructor for derived classes
         /// </summary>
         protected MasterElement():base() { }
+        //public Master(MasterElement parent) : base() { }
+        //{
+
+        //}
         /// <summary>
         /// Remove the first element matching the specified name
         /// </summary>
@@ -136,7 +141,7 @@ namespace SpawnDev.EBML.Elements
         /// <param name="element"></param>
         /// <param name="destination"></param>
         /// <returns></returns>
-        public int PasteCopy(ElementBase element, int destination = -1) => PasteCopies(new[] { element }, destination);
+        public int PasteCopy(BaseElement element, int destination = -1) => PasteCopies(new[] { element }, destination);
         /// <summary>
         /// Pastes a opy of the specified elements into this MasterElement at the specified index
         /// </summary>
@@ -146,10 +151,10 @@ namespace SpawnDev.EBML.Elements
         /// </param>
         /// <param name="destination">The index position to paste the elements at. -1 will aster at the end.</param>
         /// <returns></returns>
-        public int PasteCopies(IEnumerable<ElementBase> elements, int destination = -1)
+        public int PasteCopies(IEnumerable<BaseElement> elements, int destination = -1)
         {
             // TODO - return the newly pasted elements (not the originals)
-            var streams = elements.Select(o => o.ElementStreamSlice()).ToList();
+            var streams = elements.Select(o => o.ElementToSlice()).ToList();
             var totalSize = streams.Sum(o => o.Length);
             if (totalSize == 0) return 0;
             var children = Children.ToList();
@@ -205,7 +210,7 @@ namespace SpawnDev.EBML.Elements
             var ret = Add<BinaryElement>(name, atChildIndex);
             if (value != null)
             {
-                ret.Data = new PatchStream(value);
+                ret.ReplaceData(value);
             }
             return ret;
         }
@@ -303,9 +308,9 @@ namespace SpawnDev.EBML.Elements
         /// <param name="destination"></param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-        public TElement Add<TElement>(int destination = -1) where TElement : ElementBase
+        public TElement Add<TElement>(int destination = -1) where TElement : BaseElement
         {
-            var elementNameFromType = Parser.GetElementNameFromType<TElement>(DocType);
+            var elementNameFromType = EBMLParser.GetElementNameFromType<TElement>();
             if (elementNameFromType == null) throw new Exception($"Could not determine element name from type: {typeof(TElement).Name}");
             return Add<TElement>(elementNameFromType, destination);
         }
@@ -315,7 +320,7 @@ namespace SpawnDev.EBML.Elements
         /// <param name="name"></param>
         /// <param name="destination"></param>
         /// <returns></returns>
-        public ElementBase Add(string name, int destination = -1) => Add<ElementBase>(name, destination);
+        public BaseElement Add(string name, int destination = -1) => Add<BaseElement>(name, destination);
         /// <summary>
         /// Returns a list of EBMLSchemaElement that can be added to this MasterElement
         /// </summary>
@@ -347,9 +352,9 @@ namespace SpawnDev.EBML.Elements
         /// Add an element using element schema
         /// </summary>
         /// <param name="schemaElement"></param>
-        /// <param name="destination"></param>
+        /// <param name="targetIndex"></param>
         /// <returns></returns>
-        public ElementBase AddElement(SchemaElement schemaElement, int destination = -1) => Add<ElementBase>(schemaElement.Name, destination);
+        public BaseElement AddElement(SchemaElement schemaElement, int targetIndex = -1) => Add<BaseElement>(schemaElement.Name, targetIndex);
         /// <summary>
         /// Add an element
         /// </summary>
@@ -358,9 +363,8 @@ namespace SpawnDev.EBML.Elements
         /// <param name="destination"></param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-        public TElement Add<TElement>(string name, int destination = -1) where TElement : ElementBase
+        public TElement Add<TElement>(string name, int destination = -1) where TElement : BaseElement
         {
-            ThrowIfCannotEdit();
             // here, index in name is ignored
             if (name.Contains('/'))
             {
@@ -408,10 +412,11 @@ namespace SpawnDev.EBML.Elements
                     throw new Exception($"{name} can only occur 1 time in a container");
                 }
             }
+            ThrowIfCannotEditData();
             var childrenBefore = children.Take(destination).ToList();
             var newPos = childrenBefore.LastOrDefault()?.EndPos ?? DataOffset;
             if (!Exists) throw new Exception("This element no longer exists");
-            var schemaElement = Parser.GetElement(name, SchemaElement?.DocType ?? EBMLParser.EBML);
+            var schemaElement = Parser.GetElement(name, SchemaElement?.DocType ?? EBMLParser.EBMLSchemaName);
             if (schemaElement == null)
             {
                 var docType = Document.DocType;
@@ -431,7 +436,15 @@ namespace SpawnDev.EBML.Elements
             // now update all parents headers to reflect the added data
             DataChanged(this, newDataSize);
             if (Verbose) Console.WriteLine($"AddedElement: {name},{typeIndex} {destination} {InstancePath}");
-            var ret = Find<TElement>($",{destination}").First();
+            // Mark the post-insert patch as a restore point so Stream.LatestStable
+            // (used by EBMLDocument.FindInfo) picks up the newly-inserted bytes.
+            // Without this step, LatestStable falls back to the first (empty) patch
+            // on a freshly-created document and no element is ever found.
+            Stream.RestorePoint = true;
+            // Look up the newly-inserted element by (name, per-name-type-index) under this
+            // master. The previous path `",{destination}"` had no element name and always
+            // returned zero results, so `First()` threw and the Add operation crashed.
+            var ret = Find<TElement>($"{name},{typeIndex}").First();
             if (Verbose) Console.WriteLine($"Added verified: {name},{typeIndex} {destination} {InstancePath}");
             ret.AfterAdded();
             Document.EnableDocumentEngines();
@@ -465,15 +478,15 @@ namespace SpawnDev.EBML.Elements
         /// </summary>
         /// <param name="path"></param>
         /// <returns></returns>
-        public IEnumerable<ElementBase> this[string path] => Find(Path);
+        public IEnumerable<BaseElement> this[string path] => Find(Path);
         /// <summary>
         /// Returns all child elements of this element
         /// </summary>
-        public IEnumerable<ElementBase> Children => Find();
+        public IEnumerable<BaseElement> Children => Find();
         /// <summary>
         /// Returns all child elements of this element
         /// </summary>
-        public IAsyncEnumerable<ElementBase> ChildrenAsync => FindAsync<ElementBase>("", CancellationToken.None);
+        public IAsyncEnumerable<BaseElement> ChildrenAsync => FindAsync<BaseElement>("", CancellationToken.None);
         public IEnumerable<MasterElement> Masters => Find<MasterElement>("@master");
         /// <summary>
         /// Returns all the string and utf-8 elements in this element
@@ -513,39 +526,39 @@ namespace SpawnDev.EBML.Elements
         /// </summary>
         /// <param name="path"></param>
         /// <returns></returns>
-        public ElementBase? First(string path) => Find<ElementBase>(path).FirstOrDefault();
+        public BaseElement? First(string path) => Find<BaseElement>(path).FirstOrDefault();
         /// <summary>
         /// Returns the first element that matches the path filter
         /// </summary>
         /// <typeparam name="TElement"></typeparam>
         /// <param name="path"></param>
         /// <returns></returns>
-        public TElement? First<TElement>(string path) where TElement : ElementBase => Find<TElement>(path).FirstOrDefault();
+        public TElement? First<TElement>(string path) where TElement : BaseElement => Find<TElement>(path).FirstOrDefault();
         /// <summary>
         /// Search this element's children for elements with the name determined by the TElement type
         /// </summary>
         /// <typeparam name="TElement"></typeparam>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-        public TElement? First<TElement>() where TElement : ElementBase
+        public TElement? First<TElement>() where TElement : BaseElement
         {
-            var elementNameFromType = Parser.GetElementNameFromType<TElement>(DocType);
+            var elementNameFromType = EBMLParser.GetElementNameFromType<TElement>();
             if (elementNameFromType == null) throw new Exception($"Could not determine element name from type: {typeof(TElement).Name}");
             return First<TElement>(elementNameFromType);
         }
-        public IEnumerable<ElementBase> Find(string path = "") => Find<ElementBase>(path);
-        public IEnumerable<TElement> Find<TElement>() where TElement : ElementBase
+        public IEnumerable<BaseElement> Find(string path = "") => Find<BaseElement>(path);
+        public IEnumerable<TElement> Find<TElement>() where TElement : BaseElement
         {
-            var elementNameFromType = Parser.GetElementNameFromType<TElement>(DocType);
+            var elementNameFromType = EBMLParser.GetElementNameFromType<TElement>();
             if (elementNameFromType == null) throw new Exception($"Could not determine element name from type: {typeof(TElement).Name}");
             return Find<TElement>(elementNameFromType);
         }
-        public IEnumerable<TElement> Find<TElement>(string path) where TElement : ElementBase
+        public IEnumerable<TElement> Find<TElement>(string path) where TElement : BaseElement
         {
             return FindInfo(path).Select(elementSource =>
             {
                 TElement element;
-                if (typeof(TElement) == typeof(ElementBase))
+                if (typeof(TElement) == typeof(BaseElement))
                 {
                     // default type requested so we use the best default representation of the element available
                     var type = Parser.GetElementType(elementSource.SchemaElement!.Type, elementSource.SchemaElement!.Name, DocType);
@@ -567,21 +580,21 @@ namespace SpawnDev.EBML.Elements
             return Document!.FindInfo(path);
         }
         // Async Find
-        public IAsyncEnumerable<ElementBase> FindAsync(CancellationToken cancellationToken) => FindAsync<ElementBase>("", cancellationToken);
-        public IAsyncEnumerable<ElementBase> FindAsync(string path, CancellationToken cancellationToken) => FindAsync<ElementBase>(path, cancellationToken);
-        public IAsyncEnumerable<TElement> FindAsync<TElement>(CancellationToken cancellationToken) where TElement : ElementBase
+        public IAsyncEnumerable<BaseElement> FindAsync(CancellationToken cancellationToken) => FindAsync<BaseElement>("", cancellationToken);
+        public IAsyncEnumerable<BaseElement> FindAsync(string path, CancellationToken cancellationToken) => FindAsync<BaseElement>(path, cancellationToken);
+        public IAsyncEnumerable<TElement> FindAsync<TElement>(CancellationToken cancellationToken) where TElement : BaseElement
         {
-            var elementNameFromType = Parser.GetElementNameFromType<TElement>(DocType);
+            var elementNameFromType = EBMLParser.GetElementNameFromType<TElement>();
             if (elementNameFromType == null) throw new Exception($"Could not determine element name from type: {typeof(TElement).Name}");
             return FindAsync<TElement>(elementNameFromType, cancellationToken);
         }
-        public async IAsyncEnumerable<TElement> FindAsync<TElement>(string path, CancellationToken cancellationToken) where TElement : ElementBase
+        public async IAsyncEnumerable<TElement> FindAsync<TElement>(string path, CancellationToken cancellationToken) where TElement : BaseElement
         {
             var iterator = FindInfoAsync(path, cancellationToken);
             await foreach (var elementSource in iterator)
             {
                 TElement element;
-                if (typeof(TElement) == typeof(ElementBase))
+                if (typeof(TElement) == typeof(BaseElement))
                 {
                     // default type requested so we use the best default representation of the element available
                     var type = Parser.GetElementType(elementSource.SchemaElement?.Type, elementSource.Name, DocType);
@@ -596,6 +609,7 @@ namespace SpawnDev.EBML.Elements
         }
         public virtual IAsyncEnumerable<ElementStreamInfo> FindInfoAsync(string path, CancellationToken cancellationToken)
         {
+            if (DocumentRoot) throw new Exception("Document not found");
             if (!path.StartsWith("/"))
             {
                 path = $"{InstancePath.TrimEnd('/')}/{path}";
@@ -603,5 +617,13 @@ namespace SpawnDev.EBML.Elements
             return Document!.FindInfoAsync(path, cancellationToken);
         }
         #endregion
+        protected override string DataToDataString()
+        {
+            return "";
+        }
+        protected override void DataFromDataString(string value)
+        {
+            // not supported for this element type. ignore.
+        }
     }
 }

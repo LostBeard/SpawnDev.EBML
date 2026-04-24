@@ -55,7 +55,7 @@
     }
     protected override async Task OnParametersSetAsync()
     {
-        var data = Element.Data.ToArray(true);
+        var data = Element.ElementDataToBytes();
         var fileType = DetectContentType(data);
         if (fileType != null && fileType.StartsWith("image/"))
         {

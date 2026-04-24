@@ -25,7 +25,7 @@ namespace SpawnDev.EBML.Engines
         /// Called by the Document when the document has changed<br/>
         /// This gives the engine a chance to update the document if needed
         /// </summary>
-        public abstract void DocumentCheck(List<ElementBase> changedElements);
+        public abstract void DocumentCheck(List<BaseElement> changedElements);
         /// <summary>
         /// Fired when a log entry has been added
         /// </summary>

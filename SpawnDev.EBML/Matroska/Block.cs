@@ -2,9 +2,8 @@
 
 namespace SpawnDev.EBML.Matroska
 {
-    [ElementName("webm", "Block")]
-    [ElementName("matroska", "Block")]
-    public class Block : ElementBase
+    [ElementName(nameof(Block), "matroska", "webm")]
+    public class Block : BaseElement
     {
         /// <summary>
         /// New instance

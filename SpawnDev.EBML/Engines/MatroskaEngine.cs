@@ -19,7 +19,7 @@ namespace SpawnDev.EBML.Engines
         public List<string> DefaultSeekHeadTargets = new List<string> { "Info", "Tracks", "Chapters", "Cues", "Attachments" };
         public bool AutoPopulateSeekDefaultTargets { get; set; } = true;
         string[] DocTypes = new[] { "matroska", "webm" };
-        public override void DocumentCheck(List<ElementBase> changedElements)
+        public override void DocumentCheck(List<BaseElement> changedElements)
         {
             if (!DocTypes.Contains(Document.DocType)) return;
             //var issues = new List<DocumentIssue>();
