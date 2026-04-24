@@ -33,6 +33,19 @@
 		<None Remove="Schemas\ebml_webm.xml" />
 	</ItemGroup>
 
+	<!--
+	  v3 WIP files excluded from build until the refactor is completed.
+	  StreamElements/BaseElement.cs and Schemas/EBMLParserIterator.cs contain
+	  incomplete code referencing undefined symbols. Re-include them as the
+	  v3 refactor lands piece by piece.
+	-->
+	<ItemGroup>
+		<Compile Remove="StreamElements\**\*.cs" />
+		<Compile Remove="Schemas\EBMLParserIterator.cs" />
+		<None Include="StreamElements\**\*.cs" />
+		<None Include="Schemas\EBMLParserIterator.cs" />
+	</ItemGroup>
+
 	<ItemGroup>
 		<EmbeddedResource Include="Schemas\ebml.xml" />
 		<EmbeddedResource Include="Schemas\ebml_matroska.xml" />
